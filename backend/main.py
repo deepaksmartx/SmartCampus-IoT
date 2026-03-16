@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session
 from app.database import engine, Base, get_db
 from app import models, routes
 from app.auth import create_access_token, verify_token
+import hashlib
 
 app = FastAPI(title="Backend API", version="1.0.0")
 
@@ -29,7 +30,8 @@ def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depend
     - 'password' field captures the password
     """
     user = db.query(models.User).filter(models.User.email == form_data.username).first()
-    if not user or user.hashed_password != form_data.password:
+    hashed_password = hashlib.sha256(form_data.password.encode()).hexdigest()
+    if not user or user.hashed_password != hashed_password:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Incorrect email or password",
