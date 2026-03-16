@@ -17,7 +17,7 @@ app.add_middleware(
 )
 
 # Create tables on startup (optional — prefer using init_db.py manually)
-# Base.metadata.create_all(bind=engine)
+Base.metadata.create_all(bind=engine)
 
 # Root route
 @app.get("/")

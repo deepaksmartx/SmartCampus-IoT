@@ -3,7 +3,7 @@ from sqlalchemy.sql import func
 from .database import Base
 import enum
 
-class UserRole(enum.Enum):
+class UserRole(str,enum.Enum):
     ADMIN = "Admin"
     FACILITY_MANAGER = "Facility Manager"
     STUDENT = "Student"

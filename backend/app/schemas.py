@@ -24,3 +24,10 @@ class UserResponse(BaseModel):
 
 class ErrorResponse(BaseModel):
     detail: str
+
+class UserRegister(BaseModel):
+    name: str
+    email: EmailStr
+    password: str
+    role: UserRole
+    phone_number: str | None = None
