@@ -1,25 +1,53 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Depends, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
-from app.database import engine, Base
-from app import models
-from app import routes
-from app.auth import create_access_token
+from fastapi.security import OAuth2PasswordRequestForm
+from sqlalchemy.orm import Session
+from app.database import engine, Base, get_db
+from app import models, routes
+from app.auth import create_access_token, verify_token
 
 app = FastAPI(title="Backend API", version="1.0.0")
 
 # Add CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Change this to specific origins in production
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# Create tables on startup (optional — prefer using init_db.py manually)
-# Base.metadata.create_all(bind=engine)
+@app.post("/login", tags=["Authentication"])
+def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
+    """
+    Handle user login. OAuth2 standard:
+    - 'username' field captures the email
+    - 'password' field captures the password
+    """
+    user = db.query(models.User).filter(models.User.email == form_data.username).first()
+    if not user or user.hashed_password != form_data.password:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Incorrect email or password",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    
+    token = create_access_token(user_id=user.id)
+    return {"access_token": token, "token_type": "bearer"}
 
-# Root route
+@app.get("/me", tags=["Authentication"])
+def get_current_user_profile(current_user: models.User = Depends(verify_token)):
+    """
+    An extra endpoint to prove your JWT verification works.
+    Only accessible with a valid token.
+    """
+    return {
+        "id": current_user.id,
+        "name": current_user.name,
+        "email": current_user.email,
+        "role": current_user.role
+    }
+
 @app.get("/")
 def read_root():
     return {
@@ -28,22 +56,17 @@ def read_root():
         "endpoints": {
             "docs": "/docs",
             "redoc": "/redoc",
-            "users": "/users"
+            "users": "/users",
+            "login": "/login"
         }
     }
 
-# Health check
 @app.get("/health")
 def health_check():
     return {"status": "ok"}
 
-# Test endpoint to generate JWT token (remove in production)
 @app.get("/test-token/{user_id}")
 def get_test_token(user_id: int):
-    """
-    Generate a test JWT token for testing endpoints (REMOVE IN PRODUCTION).
-    Use the returned token in the Authorization header: Bearer <token>
-    """
     token = create_access_token(user_id=user_id)
     return {
         "access_token": token,
@@ -57,4 +80,5 @@ app.include_router(routes.router)
 
 if __name__ == "__main__":
     import uvicorn
+    # Finalized the port as 8000
     uvicorn.run(app, host="0.0.0.0", port=8000)
