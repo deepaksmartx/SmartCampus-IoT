@@ -1,113 +1,131 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import '../styles/Login.css';
+import React, { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import "../App.css";
 
-const Login = () => {
-  const [formData, setFormData] = useState({
-    email: '',
-    password: '',
-  });
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
+function Login() {
   const navigate = useNavigate();
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
 
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-    setFormData({
-      ...formData,
-      [name]: value,
-    });
-    if (error) setError('');
-  };
-
-  const handleSubmit = async (e) => {
+  const handleLogin = async (e) => {
     e.preventDefault();
-    setError('');
+    setError("");
     setLoading(true);
 
-    if (!formData.email || !formData.password) {
-      setError('Please enter both email and password');
-      setLoading(false);
-      return;
-    }
-
     try {
-      const response = await fetch('http://localhost:8000/login', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded',
-        },
-        body: `username=${encodeURIComponent(formData.email)}&password=${encodeURIComponent(formData.password)}`,
+      // FastAPI OAuth2PasswordRequestForm requires form-encoded data, NOT JSON
+      const formData = new URLSearchParams();
+      formData.append("username", email);   // FastAPI expects "username" field
+      formData.append("password", password);
+
+      const response = await fetch("http://127.0.0.1:8000/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: formData,
       });
 
       const data = await response.json();
 
-      if (!response.ok) {
-        setError(data.detail || 'Login failed. Please try again.');
-      } else {
+      if (response.ok && data.access_token) {
         // Store token
-        localStorage.setItem('access_token', data.access_token);
-        // Redirect to dashboard or home
-        navigate('/');
+        localStorage.setItem("access_token", data.access_token);
+        
+        // Fetch user profile
+        const profileResponse = await fetch("http://127.0.0.1:8000/users/profile", {
+          method: "GET",
+          headers: { "Authorization": `Bearer ${data.access_token}` },
+        });
+        
+        const userProfile = await profileResponse.json();
+        
+        if (profileResponse.ok) {
+          localStorage.setItem("user", JSON.stringify(userProfile));
+          localStorage.setItem("role", userProfile.role);
+
+          // Redirect based on role
+          if (userProfile.role === "Admin") {
+            navigate("/admin-dashboard");
+          } else if (userProfile.role === "Facility Manager") {
+            navigate("/manager-dashboard");
+          } else {
+            navigate("/student-dashboard");
+          }
+        } else {
+          setError("Could not fetch user profile. Please try again.");
+        }
+      } else {
+        setError(data.detail || "Invalid credentials. Please try again.");
       }
-    } catch (err) {
-      setError('Error connecting to server. Please check the backend is running.');
-      console.error('Login error:', err);
+    } catch {
+      setError("Could not connect to the server. Try again later.");
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="login-container">
-      <div className="login-card">
-        <h1>Welcome Back</h1>
-        <p className="subtitle">Login to SmartCampus</p>
+    <>
+      <div className="bg-mesh" />
+      <div className="page-wrapper">
+        <div className="auth-container">
+          <div className="auth-card">
 
-        {error && <div className="alert alert-error">{error}</div>}
+            <div className="brand-mark">
+              <div className="brand-icon">🏫</div>
+              <span className="brand-name">SmartCampus</span>
+            </div>
 
-        <form onSubmit={handleSubmit}>
-          <div className="form-group">
-            <label htmlFor="email">Email Address</label>
-            <input
-              type="email"
-              id="email"
-              name="email"
-              value={formData.email}
-              onChange={handleChange}
-              placeholder="your@email.com"
-              disabled={loading}
-            />
+            <h2 className="auth-title">Welcome back</h2>
+            <p className="auth-subtitle">Sign in to your campus account</p>
+
+            {error && <div className="toast toast-error">{error}</div>}
+
+            <form onSubmit={handleLogin}>
+              <div className="field-group">
+                <label className="field-label">Email address</label>
+                <input
+                  className="field-input"
+                  type="email"
+                  placeholder="you@campus.edu"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  required
+                  autoComplete="email"
+                />
+              </div>
+
+              <div className="field-group">
+                <label className="field-label">Password</label>
+                <input
+                  className="field-input"
+                  type="password"
+                  placeholder="••••••••"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                  autoComplete="current-password"
+                />
+              </div>
+
+              <button className="btn-primary" type="submit" disabled={loading}>
+                {loading ? "Signing in…" : "Sign In →"}
+              </button>
+            </form>
+
+            <hr className="divider" />
+
+            <p className="auth-footer">
+              Don't have an account?{" "}
+              <a onClick={() => navigate("/signup")}>Create one</a>
+            </p>
+
           </div>
-
-          <div className="form-group">
-            <label htmlFor="password">Password</label>
-            <input
-              type="password"
-              id="password"
-              name="password"
-              value={formData.password}
-              onChange={handleChange}
-              placeholder="Enter your password"
-              disabled={loading}
-            />
-          </div>
-
-          <button
-            type="submit"
-            className="btn-submit"
-            disabled={loading}
-          >
-            {loading ? 'Logging in...' : 'Login'}
-          </button>
-        </form>
-
-        <p className="signup-link">
-          Don't have an account? <a href="/register">Sign up here</a>
-        </p>
+        </div>
       </div>
-    </div>
+    </>
   );
-};
+}
 
 export default Login;

@@ -1,11 +1,10 @@
-import React, { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import '../styles/Home.css';
+import { useNavigate } from "react-router-dom";
+import { useEffect, useState } from "react";
+import "../App.css";
 
-const Home = () => {
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [userName, setUserName] = useState("");
+function Home() {
   const navigate = useNavigate();
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
 
   useEffect(() => {
     const token = localStorage.getItem("access_token");
@@ -21,33 +20,55 @@ const Home = () => {
   };
 
   return (
-    <div className="home-container">
-      <div className="home-content">
-        <h1>Welcome to SmartCampus</h1>
-        <p>Intelligent Campus Management System</p>
-        
-        <div className="button-group">
-          {isLoggedIn ? (
-            <>
-              <p className="welcome-msg">Logged in as Student</p>
-              <button onClick={handleLogout} className="btn btn-secondary">
+    <>
+      <div className="bg-mesh" />
+      <div className="page-wrapper">
+        <div className="home-page">
+
+          <div className="home-badge">
+            🏫 Smart Campus Platform
+          </div>
+
+          <h1 className="home-title">
+            Campus Management<br />
+            <span>Made Effortless</span>
+          </h1>
+
+          <p className="home-desc">
+            Book facilities, manage rooms, raise maintenance tickets — everything
+            your campus needs, in one modern platform.
+          </p>
+
+          <div className="home-actions">
+            {isLoggedIn ? (
+              <button
+                className="home-btn-primary"
+                onClick={handleLogout}
+              >
                 Logout
               </button>
-            </>
-          ) : (
-            <>
-              <Link to="/login" className="btn btn-primary">
-                Login
-              </Link>
-              <Link to="/register" className="btn btn-secondary">
-                Sign Up
-              </Link>
-            </>
-          )}
+            ) : (
+              <>
+                <button
+                  className="home-btn-primary"
+                  onClick={() => navigate("/login")}
+                >
+                  Sign In →
+                </button>
+                <button
+                  className="home-btn-outline"
+                  onClick={() => navigate("/signup")}
+                >
+                  Create Account
+                </button>
+              </>
+            )}
+          </div>
+
         </div>
       </div>
-    </div>
+    </>
   );
-};
+}
 
 export default Home;
