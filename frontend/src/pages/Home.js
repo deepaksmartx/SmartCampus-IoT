@@ -6,17 +6,16 @@ const Home = () => {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [userName, setUserName] = useState("");
   const navigate = useNavigate();
+
+  useEffect(() => {
     const token = localStorage.getItem("access_token");
     if (token) {
-      // If a token exists, we assume they are logged in for the UI
-      // You can also call your /profile backend here to get the actual name
       setIsLoggedIn(true);
-      // Optional: fetch user info from your FastAPI /profile endpoint
     }
   }, []);
 
   const handleLogout = () => {
-    localStorage.removeItem("access_token"); // Clear your JWT
+    localStorage.removeItem("access_token");
     setIsLoggedIn(false);
     navigate("/");
   };

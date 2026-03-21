@@ -24,3 +24,9 @@ class User(Base):
 
     def __repr__(self):
         return f"<User id={self.id} name={self.name} email={self.email} role={self.role}>"
+
+class Campus(Base):
+    __tablename__ = "campuses"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String(255), nullable=False)

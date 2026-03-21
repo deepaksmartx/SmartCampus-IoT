@@ -89,3 +89,7 @@ if __name__ == "__main__":
     import uvicorn
     # Finalized the port as 8000
     uvicorn.run(app, host="0.0.0.0", port=8000)
+
+from app.routes_facility import router as facility_router
+
+app.include_router(facility_router)

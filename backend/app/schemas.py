@@ -31,3 +31,23 @@ class UserRegister(BaseModel):
     password: str
     role: UserRole
     phone_number: str | None = None
+
+class UserLogin(BaseModel):
+    email: EmailStr
+    password: str
+
+class TokenResponse(BaseModel):
+    access_token: str
+    token_type: str
+
+class CampusBase(BaseModel):
+    name: str
+
+class CampusCreate(CampusBase):
+    pass
+
+class CampusResponse(CampusBase):
+    id: int
+
+    class Config:
+        from_attributes = True
