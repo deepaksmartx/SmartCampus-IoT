@@ -14,13 +14,22 @@ const MODULES = [
     arrowColor: "#60a5fa",
   },
   {
-    key: "facilities",
-    title: "Facilities",
-    desc: "Oversee all campus facilities — rooms, halls, labs, and outdoor spaces.",
-    icon: "🏛️",
+    key: "buildings",
+    title: "Buildings",
+    desc: "Manage campus buildings, wings, rooms, and facility resources.",
+    icon: "🏢",
     color: "green",
     iconBg: "rgba(14,159,110,0.15)",
     arrowColor: "#34d399",
+  },
+  {
+    key: "floors",
+    title: "Floors",
+    desc: "Manage building floors and their assignments.",
+    icon: "🚪",
+    color: "purple",
+    iconBg: "rgba(124,58,237,0.15)",
+    arrowColor: "#a78bfa",
   },
   {
     key: "bookings",
@@ -140,6 +149,20 @@ function AdminDashboard() {
     navigate("/login");
   };
 
+  const handleModuleClick = (moduleKey) => {
+    switch (moduleKey) {
+      case "buildings":
+        navigate("/buildings");
+        break;
+      case "floors":
+        navigate("/floors");
+        break;
+      default:
+        alert(`${moduleKey} module coming soon!`);
+        break;
+    }
+  };
+
   return (
     <>
       <div className="bg-mesh" />
@@ -251,7 +274,7 @@ function AdminDashboard() {
               <div
                 key={m.key}
                 className={`module-card ${m.color}`}
-                onClick={() => alert(`${m.title} module coming soon!`)}
+                onClick={() => handleModuleClick(m.key)}
               >
                 <div className="module-icon-wrap" style={{ background: m.iconBg }}>{m.icon}</div>
                 <div className="module-card-title">{m.title}</div>

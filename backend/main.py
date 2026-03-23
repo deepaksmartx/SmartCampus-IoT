@@ -5,6 +5,9 @@ from sqlalchemy.orm import Session
 from app.database import engine, Base, get_db
 from app import models, routes
 from app.auth import create_access_token, verify_token
+from app.routes_facility import router as facility_router
+from app.routes_building import router as building_router
+from app.routes_floor import router as floor_router
 import hashlib
 
 app = FastAPI(title="Backend API", version="1.0.0")
@@ -84,12 +87,12 @@ def get_test_token(user_id: int):
 
 # Include routers
 app.include_router(routes.router)
+app.include_router(facility_router)
+app.include_router(building_router)
+app.include_router(floor_router)
 
 if __name__ == "__main__":
     import uvicorn
     # Finalized the port as 8000
     uvicorn.run(app, host="0.0.0.0", port=8000)
 
-from app.routes_facility import router as facility_router
-
-app.include_router(facility_router)

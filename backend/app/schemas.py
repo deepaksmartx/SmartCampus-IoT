@@ -51,3 +51,39 @@ class CampusResponse(CampusBase):
 
     class Config:
         from_attributes = True
+
+class BuildingBase(BaseModel):
+    name: str
+    campus_id: int
+
+class BuildingCreate(BuildingBase):
+    pass
+
+class BuildingUpdate(BaseModel):
+    name: str | None = None
+    campus_id: int | None = None
+
+class BuildingResponse(BuildingBase):
+    id: int
+    created_at: datetime
+    updated_at: datetime | None = None
+
+    class Config:
+        from_attributes = True
+
+class FloorBase(BaseModel):
+    floor_no: int
+    building_id: int
+
+class FloorCreate(FloorBase):
+    pass
+
+class FloorUpdate(BaseModel):
+    floor_no: int | None = None
+    building_id: int | None = None
+
+class FloorResponse(FloorBase):
+    id: int
+
+    class Config:
+        from_attributes = True

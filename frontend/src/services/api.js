@@ -122,4 +122,103 @@ export const getUserRole = () => {
 };
 
 
+// ── Building APIs ──────────────────────────────────────────────
+export const buildingAPI = {
+  
+  createBuilding: async (buildingData) => {
+    // buildingData: { name, campus_id }
+    const response = await api.post("/buildings/", buildingData);
+    return response.data;
+  },
+
+  getAllBuildings: async () => {
+    const response = await api.get("/buildings/");
+    return response.data;
+  },
+
+  getBuildingById: async (buildingId) => {
+    const response = await api.get(`/buildings/${buildingId}`);
+    return response.data;
+  },
+
+  getBuildingsByCampus: async (campusId) => {
+    const response = await api.get(`/buildings/campus/${campusId}`);
+    return response.data;
+  },
+
+  updateBuilding: async (buildingId, buildingData) => {
+    // buildingData: { name?, campus_id? }
+    const response = await api.put(`/buildings/${buildingId}`, buildingData);
+    return response.data;
+  },
+
+  deleteBuilding: async (buildingId) => {
+    const response = await api.delete(`/buildings/${buildingId}`);
+    return response.data;
+  },
+};
+
+export const campusAPI = {
+  getAllCampuses: async () => {
+    const response = await api.get("/campus/");
+    return response.data;
+  },
+
+  getCampusById: async (campusId) => {
+    const response = await api.get(`/campus/${campusId}`);
+    return response.data;
+  },
+
+  createCampus: async (campusData) => {
+    // campusData: { name }
+    const response = await api.post("/campus/", campusData);
+    return response.data;
+  },
+
+  updateCampus: async (campusId, campusData) => {
+    const response = await api.put(`/campus/${campusId}`, campusData);
+    return response.data;
+  },
+
+  deleteCampus: async (campusId) => {
+    const response = await api.delete(`/campus/${campusId}`);
+    return response.data;
+  },
+};
+
+export const floorAPI = {
+  createFloor: async (floorData) => {
+    // floorData: { floor_no, building_id }
+    const response = await api.post("/floors/", floorData);
+    return response.data;
+  },
+
+  getAllFloors: async () => {
+    const response = await api.get("/floors/");
+    return response.data;
+  },
+
+  getFloorById: async (floorId) => {
+    const response = await api.get(`/floors/${floorId}`);
+    return response.data;
+  },
+
+  getFloorsByBuilding: async (buildingId) => {
+    const response = await api.get(`/floors/building/${buildingId}`);
+    return response.data;
+  },
+
+  updateFloor: async (floorId, floorData) => {
+    // floorData: { floor_no?, building_id? }
+    const response = await api.put(`/floors/${floorId}`, floorData);
+    return response.data;
+  },
+
+  deleteFloor: async (floorId) => {
+    const response = await api.delete(`/floors/${floorId}`);
+    return response.data;
+  },
+};
+
+
 export default api;

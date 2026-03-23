@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, DateTime, Enum
+from sqlalchemy import Column, Integer, String, DateTime, Enum, ForeignKey
 from sqlalchemy.sql import func
 from .database import Base
 import enum
@@ -30,3 +30,25 @@ class Campus(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String(255), nullable=False)
+
+class Building(Base):
+    __tablename__ = "buildings"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String(255), nullable=False)
+    campus_id = Column(Integer, ForeignKey("campuses.id"), nullable=False)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+
+    def __repr__(self):
+        return f"<Building id={self.id} name={self.name} campus_id={self.campus_id}>"
+
+class Floor(Base):
+    __tablename__ = "floors"
+
+    id = Column(Integer, primary_key=True, index=True)
+    floor_no = Column(Integer, nullable=False)
+    building_id = Column(Integer, ForeignKey("buildings.id"), nullable=False)
+
+    def __repr__(self):
+        return f"<Floor id={self.id} floor_no={self.floor_no} building_id={self.building_id}>"

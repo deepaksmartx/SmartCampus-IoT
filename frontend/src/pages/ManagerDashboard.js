@@ -5,9 +5,9 @@ import "../App.css";
 
 const MODULES = [
   {
-    key: "rooms",
-    title: "Room Management",
-    desc: "View, add, or update classrooms, labs, and meeting room availability.",
+    key: "buildings",
+    title: "Buildings",
+    desc: "View and manage campus buildings and facility resources.",
     icon: "🏢",
     color: "blue",
     iconBg: "rgba(26,86,219,0.15)",
@@ -140,6 +140,17 @@ function ManagerDashboard() {
     navigate("/login");
   };
 
+  const handleModuleClick = (moduleKey) => {
+    switch (moduleKey) {
+      case "buildings":
+        navigate("/buildings");
+        break;
+      default:
+        alert(`${moduleKey} module coming soon!`);
+        break;
+    }
+  };
+
   return (
     <>
       <div className="bg-mesh" />
@@ -251,7 +262,7 @@ function ManagerDashboard() {
               <div
                 key={m.key}
                 className={`module-card ${m.color}`}
-                onClick={() => alert(`${m.title} module coming soon!`)}
+                onClick={() => handleModuleClick(m.key)}
               >
                 <div className="module-icon-wrap" style={{ background: m.iconBg }}>{m.icon}</div>
                 <div className="module-card-title">{m.title}</div>

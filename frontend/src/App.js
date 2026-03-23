@@ -7,6 +7,8 @@ import AdminDashboard from "./pages/AdminDashboard";
 import ManagerDashboard from "./pages/ManagerDashboard";
 import StudentDashboard from "./pages/StudentDashboard";
 import Profile from "./pages/Profile";
+import Buildings from "./pages/Buildings";
+import Floors from "./pages/Floors";
 import "./App.css";
 
 // ✅ Apply saved theme when app loads
@@ -34,6 +36,8 @@ function App() {
         <Route path="/manager-dashboard" element={<ManagerDashboard />} />
         <Route path="/student-dashboard" element={<StudentDashboard />} />
         <Route path="/profile" element={<Profile />} />
+        <Route path="/buildings" element={<Buildings />} />
+        <Route path="/floors" element={<Floors />} />
 
       </Routes>
     </BrowserRouter>
