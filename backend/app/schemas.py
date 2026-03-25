@@ -8,6 +8,28 @@ class UserRole(str, Enum):
     STUDENT = "Student"
     STAFF = "Staff"
 
+class FacilityType(str, Enum):
+    CLASSROOM = "Classroom"
+    LAB = "Lab"
+    AUDITORIUM = "Auditorium"
+    MEETING_ROOM = "Meeting Room"
+    SPORTS_COURT = "Sports Court"
+    LIBRARY = "Library"
+    CAFE = "Cafe"
+    HOSTEL = "Hostel"
+    OTHER = "Other"
+
+class BookingStatus(str, Enum):
+    PENDING = "Pending"
+    CONFIRMED = "Confirmed"
+    CANCELLED = "Cancelled"
+    REJECTED = "Rejected"
+
+class ApprovalStatus(str, Enum):
+    PENDING = "Pending"
+    APPROVED = "Approved"
+    REJECTED = "Rejected"
+
 class UserResponse(BaseModel):
     """User profile response - excludes sensitive data like password"""
     id: int
@@ -87,3 +109,115 @@ class FloorResponse(FloorBase):
 
     class Config:
         from_attributes = True
+
+
+# ─────── Facility Schemas ───────
+class FacilityBase(BaseModel):
+    name: str
+    type: FacilityType
+    building_id: int
+    floor_id: int | None = None
+    capacity: int
+    requires_approval: bool = False
+    description: str | None = None
+
+class FacilityCreate(FacilityBase):
+    pass
+
+class FacilityUpdate(BaseModel):
+    name: str | None = None
+    type: FacilityType | None = None
+    building_id: int | None = None
+    floor_id: int | None = None
+    capacity: int | None = None
+    requires_approval: bool | None = None
+    description: str | None = None
+
+class FacilityResponse(FacilityBase):
+    id: int
+    created_at: datetime
+    updated_at: datetime | None = None
+
+    class Config:
+        from_attributes = True
+
+
+# ─────── Booking Schemas ───────
+class BookingBase(BaseModel):
+    facility_id: int
+    start_time: datetime
+    end_time: datetime
+    notes: str | None = None
+
+class BookingCreate(BookingBase):
+    recurring_pattern: str | None = None  # daily, weekly, biweekly, monthly
+    occurrence_count: int | None = None   # Number of recurring occurrences
+
+class BookingUpdate(BaseModel):
+    start_time: datetime | None = None
+    end_time: datetime | None = None
+    notes: str | None = None
+
+class BookingResponse(BookingBase):
+    id: int
+    user_id: int
+    status: BookingStatus
+    recurring_group_id: str | None = None
+    created_at: datetime
+    updated_at: datetime | None = None
+
+    class Config:
+        from_attributes = True
+
+class BookingDetailResponse(BookingResponse):
+    """Extended booking response with facility details"""
+    facility_name: str | None = None
+    user_name: str | None = None
+    approval_status: ApprovalStatus | None = None
+
+
+# ─────── Booking Approval Schemas ───────
+class BookingApprovalBase(BaseModel):
+    reason: str | None = None
+
+class BookingApprovalCreate(BookingApprovalBase):
+    pass
+
+class BookingApprovalResponse(BaseModel):
+    id: int
+    booking_id: int
+    approver_id: int | None = None
+    status: ApprovalStatus
+    reason: str | None = None
+    created_at: datetime
+    updated_at: datetime | None = None
+
+    class Config:
+        from_attributes = True
+
+
+# ─────── Conflict Response Schema ───────
+class ConflictInfo(BaseModel):
+    booking_id: int
+    facility_id: int
+    start_time: datetime
+    end_time: datetime
+    user_id: int
+
+class BookingConflictResponse(BaseModel):
+    has_conflict: bool
+    conflicts: list[ConflictInfo] = []
+
+
+# ─────── Availability Response Schema ───────
+class OccupiedSlot(BaseModel):
+    start_time: datetime
+    end_time: datetime
+    booking_id: int
+
+class FacilityAvailabilityResponse(BaseModel):
+    facility_id: int
+    date: str
+    is_available: bool
+    occupied_slots: list[OccupiedSlot] = []
+    total_slots: int

@@ -1,9 +1,19 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import SettingsPanel from "./Settingspanel";
+import { approvalAPI } from "../services/api";
 import "../App.css";
 
 const MODULES = [
+  {
+    key: "approvals",
+    title: "Pending Approvals",
+    desc: "Review and approve or reject incoming facility booking requests from users.",
+    icon: "✅",
+    color: "blue",
+    iconBg: "rgba(26,86,219,0.15)",
+    arrowColor: "#60a5fa",
+  },
   {
     key: "buildings",
     title: "Buildings",
@@ -74,6 +84,7 @@ function ManagerDashboard() {
   const [profileName, setProfileName]     = useState("Facility Manager");
   const [profileEmail, setProfileEmail]   = useState("manager@campus.edu");
   const [profilePhoto, setProfilePhoto]   = useState(null);
+  const [pendingCount, setPendingCount]   = useState(0);
   const dropdownRef = useRef(null);
 
   useEffect(() => {
@@ -95,6 +106,20 @@ function ManagerDashboard() {
         if (user.profile_photo) setProfilePhoto(user.profile_photo);
       } catch {}
     }
+  }, []);
+
+  // ✅ Fetch pending approvals count
+  useEffect(() => {
+    const fetchPendingCount = async () => {
+      try {
+        const count = await approvalAPI.getPendingApprovalsCount();
+        setPendingCount(count);
+      } catch (err) {
+        console.log("Could not fetch pending count:", err);
+        setPendingCount(0);
+      }
+    };
+    fetchPendingCount();
   }, []);
 
   const initials = profileName
@@ -142,6 +167,9 @@ function ManagerDashboard() {
 
   const handleModuleClick = (moduleKey) => {
     switch (moduleKey) {
+      case "approvals":
+        navigate("/admin/approvals");
+        break;
       case "buildings":
         navigate("/buildings");
         break;
@@ -245,7 +273,12 @@ function ManagerDashboard() {
           </div>
 
           <div className="stats-grid">
-            {STATS.map((s) => (
+            {[
+              { label: "Rooms Available",  value: "34", icon: "🏢", bg: "rgba(26,86,219,0.15)"  },
+              { label: "Pending Bookings", value: String(pendingCount), icon: "📅", bg: "rgba(14,159,110,0.15)" },
+              { label: "Open Tickets",     value: "9",  icon: "🔧", bg: "rgba(255,107,53,0.15)" },
+              { label: "Today's Events",   value: "6",  icon: "🗓️", bg: "rgba(124,58,237,0.15)" },
+            ].map((s) => (
               <div className="stat-card" key={s.label}>
                 <div className="stat-icon" style={{ background: s.bg }}>{s.icon}</div>
                 <div>

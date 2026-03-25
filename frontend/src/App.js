@@ -9,6 +9,10 @@ import StudentDashboard from "./pages/StudentDashboard";
 import Profile from "./pages/Profile";
 import Buildings from "./pages/Buildings";
 import Floors from "./pages/Floors";
+import FacilitySearch from "./pages/FacilitySearch";
+import BookingForm from "./pages/BookingForm";
+import MyBookings from "./pages/MyBookings";
+import ApprovalDashboard from "./pages/ApprovalDashboard";
 import "./App.css";
 
 // ✅ Apply saved theme when app loads
@@ -38,6 +42,11 @@ function App() {
         <Route path="/profile" element={<Profile />} />
         <Route path="/buildings" element={<Buildings />} />
         <Route path="/floors" element={<Floors />} />
+        <Route path="/facilities" element={<FacilitySearch />} />
+        <Route path="/booking/new" element={<BookingForm />} />
+        <Route path="/booking/edit/:id" element={<BookingForm />} />
+        <Route path="/my-bookings" element={<MyBookings />} />
+        <Route path="/admin/approvals" element={<ApprovalDashboard />} />
 
       </Routes>
     </BrowserRouter>

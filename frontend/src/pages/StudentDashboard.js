@@ -5,22 +5,31 @@ import "../App.css";
 
 const MODULES = [
   {
-    key: "rooms",
-    title: "Rooms",
-    desc: "Browse and reserve classrooms, labs, and meeting spaces across all campus buildings.",
+    key: "facilities",
+    title: "Browse Facilities",
+    desc: "Discover and reserve classrooms, labs, auditoriums, meeting rooms, and sports courts.",
     icon: "🏢",
     color: "blue",
     iconBg: "rgba(26,86,219,0.15)",
     arrowColor: "#60a5fa",
   },
   {
-    key: "facility",
-    title: "Book Facility",
-    desc: "Reserve auditoriums, sports courts, seminar halls, and outdoor venues with ease.",
+    key: "new-booking",
+    title: "Create Booking",
+    desc: "Quick access to create a new facility booking with real-time conflict detection.",
     icon: "📅",
     color: "green",
     iconBg: "rgba(14,159,110,0.15)",
     arrowColor: "#34d399",
+  },
+  {
+    key: "my-bookings",
+    title: "My Bookings",
+    desc: "View, manage, and cancel your facility bookings. Track approval status and timings.",
+    icon: "🗓️",
+    color: "purple",
+    iconBg: "rgba(124,58,237,0.15)",
+    arrowColor: "#a78bfa",
   },
   {
     key: "maintenance",
@@ -30,15 +39,6 @@ const MODULES = [
     color: "orange",
     iconBg: "rgba(255,107,53,0.15)",
     arrowColor: "#fb923c",
-  },
-  {
-    key: "schedule",
-    title: "My Schedule",
-    desc: "View your personal timetable, upcoming bookings, and campus event calendar.",
-    icon: "🗓️",
-    color: "purple",
-    iconBg: "rgba(124,58,237,0.15)",
-    arrowColor: "#a78bfa",
   },
 ];
 
@@ -115,6 +115,23 @@ function StudentDashboard() {
     localStorage.removeItem("user");
     localStorage.removeItem("role");
     navigate("/login");
+  };
+
+  const handleModuleClick = (moduleKey) => {
+    switch (moduleKey) {
+      case "facilities":
+        navigate("/facilities");
+        break;
+      case "new-booking":
+        navigate("/booking/new");
+        break;
+      case "my-bookings":
+        navigate("/my-bookings");
+        break;
+      default:
+        alert(`${moduleKey} module coming soon!`);
+        break;
+    }
   };
 
   return (
@@ -205,7 +222,7 @@ function StudentDashboard() {
               <div
                 key={m.key}
                 className={`module-card ${m.color}`}
-                onClick={() => alert(`${m.title} module coming soon!`)}
+                onClick={() => handleModuleClick(m.key)}
               >
                 <div className="module-icon-wrap" style={{ background: m.iconBg }}>{m.icon}</div>
                 <div className="module-card-title">{m.title}</div>

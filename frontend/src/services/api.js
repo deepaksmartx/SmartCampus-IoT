@@ -221,4 +221,152 @@ export const floorAPI = {
 };
 
 
+// ── Facility APIs ──────────────────────────────────────
+export const facilityAPI = {
+
+  createFacility: async (facilityData) => {
+    // facilityData: { name, type, building_id, floor_id?, capacity, requires_approval, description? }
+    const response = await api.post("/api/facilities/", facilityData);
+    return response.data;
+  },
+
+  getAllFacilities: async (filters = {}) => {
+    // filters: { facility_type?, building_id?, floor_id?, min_capacity? }
+    const params = new URLSearchParams();
+    Object.entries(filters).forEach(([key, value]) => {
+      if (value) params.append(key, value);
+    });
+    const response = await api.get(`/api/facilities/?${params}`);
+    return response.data;
+  },
+
+  getFacilityById: async (facilityId) => {
+    const response = await api.get(`/api/facilities/${facilityId}`);
+    return response.data;
+  },
+
+  updateFacility: async (facilityId, facilityData) => {
+    // facilityData: { name?, type?, building_id?, floor_id?, capacity?, requires_approval?, description? }
+    const response = await api.put(`/api/facilities/${facilityId}`, facilityData);
+    return response.data;
+  },
+
+  deleteFacility: async (facilityId) => {
+    const response = await api.delete(`/api/facilities/${facilityId}`);
+    return response.data;
+  },
+
+  getFacilityTypes: async () => {
+    const response = await api.get("/api/facilities/config/types");
+    return response.data;
+  },
+};
+
+
+// ── Booking APIs ───────────────────────────────────────
+export const bookingAPI = {
+
+  createBooking: async (bookingData) => {
+    // bookingData: { facility_id, start_time, end_time, notes?, recurring_pattern?, occurrence_count? }
+    const response = await api.post("/api/bookings/", bookingData);
+    return response.data;
+  },
+
+  getUserBookings: async (filters = {}) => {
+    // filters: { status_filter?, facility_id? }
+    const params = new URLSearchParams();
+    if (filters.status_filter) params.append("status_filter", filters.status_filter);
+    if (filters.facility_id) params.append("facility_id", filters.facility_id);
+    const response = await api.get(`/api/bookings/?${params}`);
+    return response.data;
+  },
+
+  getAdminBookings: async (filters = {}) => {
+    // filters: { status_filter?, facility_id?, user_id? }
+    const params = new URLSearchParams();
+    if (filters.status_filter) params.append("status_filter", filters.status_filter);
+    if (filters.facility_id) params.append("facility_id", filters.facility_id);
+    if (filters.user_id) params.append("user_id", filters.user_id);
+    const response = await api.get(`/api/bookings/admin/all?${params}`);
+    return response.data;
+  },
+
+  getBookingById: async (bookingId) => {
+    const response = await api.get(`/api/bookings/${bookingId}`);
+    return response.data;
+  },
+
+  updateBooking: async (bookingId, bookingData) => {
+    // bookingData: { start_time?, end_time?, notes? }
+    const response = await api.put(`/api/bookings/${bookingId}`, bookingData);
+    return response.data;
+  },
+
+  cancelBooking: async (bookingId) => {
+    const response = await api.delete(`/api/bookings/${bookingId}`);
+    return response.data;
+  },
+
+  checkFacilityAvailability: async (facilityId, date) => {
+    // date format: "YYYY-MM-DD"
+    const response = await api.get(`/api/bookings/facility/${facilityId}/availability?date=${date}`);
+    return response.data;
+  },
+
+  checkConflict: async (facilityId, startTime, endTime) => {
+    // Check conflict without creating booking
+    const params = new URLSearchParams();
+    params.append("facility_id", facilityId);
+    params.append("start_time", startTime.toISOString());
+    params.append("end_time", endTime.toISOString());
+    const response = await api.post(`/api/bookings/check-conflict?${params}`);
+    return response.data;
+  },
+};
+
+
+// ── Approval APIs ──────────────────────────────────────
+export const approvalAPI = {
+
+  getPendingApprovals: async (filters = {}) => {
+    // filters: { facility_id? }
+    const params = new URLSearchParams();
+    if (filters.facility_id) params.append("facility_id", filters.facility_id);
+    const response = await api.get(`/api/admin/pending-approvals?${params}`);
+    return response.data;
+  },
+
+  getPendingApprovalsCount: async () => {
+    const response = await api.get("/api/admin/pending-approvals/count");
+    return response.data;
+  },
+
+  approveBooking: async (bookingId, data = {}) => {
+    // data: { reason? }
+    const response = await api.post(`/api/admin/bookings/${bookingId}/approve`, data);
+    return response.data;
+  },
+
+  rejectBooking: async (bookingId, data = {}) => {
+    // data: { reason? }
+    const response = await api.post(`/api/admin/bookings/${bookingId}/reject`, data);
+    return response.data;
+  },
+
+  getBookingApproval: async (bookingId) => {
+    const response = await api.get(`/api/admin/bookings/${bookingId}/approval`);
+    return response.data;
+  },
+
+  getApprovalsByStatus: async (status, filters = {}) => {
+    // status: pending, approved, rejected
+    const params = new URLSearchParams();
+    params.append("status", status);
+    if (filters.facility_id) params.append("facility_id", filters.facility_id);
+    const response = await api.get(`/api/admin/approvals/by-status?${params}`);
+    return response.data;
+  },
+};
+
+
 export default api;

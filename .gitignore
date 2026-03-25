@@ -54,12 +54,19 @@ dist/
 # Testing & Temp
 test_*.py
 simple_test.py
-debug_routes.py
+debug_*.py
+check_*.py
+kill_*.py
+add_*.py
+migrate_*.py
 *.sh
 *.ps1
+stop_all.py
 
 # Development documentation
 TESTING.md
+TESTING_REPORT.md
+FINAL_TEST_REPORT.md
 INTEGRATION_TESTING.md
 INTEGRATION_VERIFICATION_REPORT.md
 SMARTCAMPUS_UI_INTEGRATION.md
@@ -68,6 +75,7 @@ BUILDINGS_FRONTEND_SUMMARY.md
 BUILDING_IMPLEMENTATION.md
 BUILDINGS_CAMPUS_FIX.md
 BUILDINGS_TESTING_COMPLETE.md
+CLEANUP_GUIDE.md
 
 # Lock files (use specific versions only)
 package-lock.json
