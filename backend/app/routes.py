@@ -1,4 +1,7 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from email import message
+import random
+from urllib import response
+from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session
 from . import models
 from . import schemas
@@ -6,6 +9,7 @@ from .database import get_db
 from .auth import verify_token
 from .auth import create_access_token
 import hashlib
+from .thingsboard_service import send_dashboard_data
 
 router = APIRouter(prefix="/users", tags=["users"])
 
@@ -100,4 +104,28 @@ def login(user: schemas.UserLogin, db: Session = Depends(get_db)):
     return {
         "access_token": token,
         "token_type": "bearer"
+    }
+
+@router.post("/dashboard/update")
+def update_dashboard(
+    device_type: str = Query(..., description="occupancy / water / energy"),
+    facility_type: str = Query(..., description="Hostel / Lab / Campus"),
+    facility_name: str = Query(..., description="Room name or building")
+):
+    status, response = send_dashboard_data(
+        device_type,
+        facility_type,
+        facility_name
+    )
+
+    message = (
+    f"{device_type} device updated successfully"
+    if status == 200
+    else f"{device_type} device update failed"
+    )
+
+    return {
+    "message": message,
+    "status_code": status,
+    "response": response
     }
