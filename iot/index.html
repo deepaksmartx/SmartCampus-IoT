@@ -1,0 +1,766 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Aura IoT — Smart Building Monitor</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=Playfair+Display:wght@700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #f8f7f4;
+    --surface: #ffffff;
+    --surface-2: #f2f0ec;
+    --border: rgba(0,0,0,0.08);
+    --text: #1a1917;
+    --text-2: #6b6862;
+    --text-3: #a8a49f;
+    --water: #0077b6;
+    --water-soft: #e8f4fd;
+    --energy: #d4860a;
+    --energy-soft: #fdf4e3;
+    --occupancy: #2d6a4f;
+    --occupancy-soft: #e9f5ee;
+    --red: #c0392b;
+    --red-soft: #fdf0ef;
+    --radius: 16px;
+    --shadow: 0 1px 3px rgba(0,0,0,0.06), 0 4px 16px rgba(0,0,0,0.05);
+    --shadow-hover: 0 4px 12px rgba(0,0,0,0.1), 0 12px 32px rgba(0,0,0,0.08);
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    min-height: 100vh;
+  }
+
+  /* ── Sidebar ── */
+  .sidebar {
+    position: fixed;
+    left: 0; top: 0; bottom: 0;
+    width: 220px;
+    background: var(--text);
+    color: #fff;
+    padding: 28px 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 32px;
+    z-index: 100;
+  }
+
+  .brand {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding: 0 4px;
+  }
+  .brand-name {
+    font-family: 'Playfair Display', serif;
+    font-size: 22px;
+    letter-spacing: -0.5px;
+    line-height: 1;
+  }
+  .brand-sub {
+    font-size: 10px;
+    font-weight: 500;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: rgba(255,255,255,0.4);
+  }
+
+  .nav-group label {
+    font-size: 9px;
+    font-weight: 600;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: rgba(255,255,255,0.3);
+    padding: 0 8px;
+    margin-bottom: 6px;
+    display: block;
+  }
+
+  .nav-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 9px 8px;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 500;
+    color: rgba(255,255,255,0.6);
+    cursor: pointer;
+    transition: all 0.15s;
+    text-decoration: none;
+  }
+  .nav-item:hover { background: rgba(255,255,255,0.08); color: #fff; }
+  .nav-item.active { background: rgba(255,255,255,0.12); color: #fff; }
+  .nav-dot {
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+
+  .sidebar-footer {
+    margin-top: auto;
+    padding: 12px 8px;
+    border-top: 1px solid rgba(255,255,255,0.1);
+  }
+  .live-badge {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 11px;
+    color: rgba(255,255,255,0.5);
+  }
+  .live-dot {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: #4ade80;
+    box-shadow: 0 0 6px #4ade80;
+    animation: blink 2s ease-in-out infinite;
+  }
+  @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.3} }
+
+  /* ── Main ── */
+  .main {
+    margin-left: 220px;
+    padding: 32px 36px;
+    min-height: 100vh;
+  }
+
+  /* ── Topbar ── */
+  .topbar {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    margin-bottom: 32px;
+    gap: 20px;
+  }
+
+  .page-title {
+    font-family: 'Playfair Display', serif;
+    font-size: 28px;
+    font-weight: 700;
+    letter-spacing: -0.5px;
+    line-height: 1.2;
+  }
+  .page-subtitle {
+    font-size: 13px;
+    color: var(--text-2);
+    margin-top: 4px;
+  }
+
+  .topbar-actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-shrink: 0;
+  }
+
+  .select-wrap {
+    position: relative;
+  }
+  .select-wrap select {
+    appearance: none;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 8px 30px 8px 12px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 13px;
+    color: var(--text);
+    cursor: pointer;
+    box-shadow: var(--shadow);
+    outline: none;
+  }
+  .select-wrap::after {
+    content: '↓';
+    position: absolute;
+    right: 10px; top: 50%;
+    transform: translateY(-50%);
+    font-size: 11px;
+    color: var(--text-3);
+    pointer-events: none;
+  }
+
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 9px 16px;
+    border-radius: 8px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 13px;
+    font-weight: 500;
+    border: none;
+    cursor: pointer;
+    transition: all 0.15s;
+    white-space: nowrap;
+  }
+  .btn-primary {
+    background: var(--text);
+    color: #fff;
+    box-shadow: var(--shadow);
+  }
+  .btn-primary:hover { background: #333; transform: translateY(-1px); box-shadow: var(--shadow-hover); }
+  .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+  .btn-ghost {
+    background: var(--surface);
+    color: var(--text);
+    border: 1px solid var(--border);
+    box-shadow: var(--shadow);
+  }
+  .btn-ghost:hover { background: var(--surface-2); }
+  .btn-ghost.active {
+    background: #dcfce7;
+    color: #166534;
+    border-color: #86efac;
+  }
+
+  /* ── Summary Row ── */
+  .summary-row {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+    margin-bottom: 28px;
+  }
+
+  .summary-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 20px 22px;
+    box-shadow: var(--shadow);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    transition: all 0.2s;
+  }
+  .summary-card:hover { box-shadow: var(--shadow-hover); transform: translateY(-1px); }
+
+  .summary-label {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.8px;
+    text-transform: uppercase;
+    color: var(--text-3);
+    margin-bottom: 6px;
+  }
+  .summary-value {
+    font-size: 26px;
+    font-weight: 600;
+    letter-spacing: -1px;
+    line-height: 1;
+  }
+  .summary-unit {
+    font-size: 13px;
+    font-weight: 400;
+    color: var(--text-2);
+    margin-left: 3px;
+  }
+  .summary-icon {
+    width: 44px; height: 44px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+    flex-shrink: 0;
+  }
+
+  .summary-card[data-type="water"] .summary-value { color: var(--water); }
+  .summary-card[data-type="water"] .summary-icon { background: var(--water-soft); }
+  .summary-card[data-type="energy"] .summary-value { color: var(--energy); }
+  .summary-card[data-type="energy"] .summary-icon { background: var(--energy-soft); }
+  .summary-card[data-type="occupancy"] .summary-value { color: var(--occupancy); }
+  .summary-card[data-type="occupancy"] .summary-icon { background: var(--occupancy-soft); }
+
+  /* ── Device Cards Grid ── */
+  .section-label {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--text-3);
+    margin-bottom: 14px;
+  }
+
+  .devices-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+    gap: 20px;
+  }
+
+  .device-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+    box-shadow: var(--shadow);
+    transition: all 0.2s;
+  }
+  .device-card:hover { box-shadow: var(--shadow-hover); transform: translateY(-2px); }
+
+  .device-card-header {
+    padding: 18px 22px 14px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .device-header-left {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .device-icon-wrap {
+    width: 36px; height: 36px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 17px;
+  }
+  .device-name {
+    font-size: 14px;
+    font-weight: 600;
+  }
+  .device-id {
+    font-size: 10px;
+    color: var(--text-3);
+    margin-top: 1px;
+    font-family: 'DM Mono', monospace;
+  }
+
+  .device-status {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 11px;
+    font-weight: 500;
+    padding: 4px 10px;
+    border-radius: 20px;
+  }
+  .device-status-dot {
+    width: 5px; height: 5px;
+    border-radius: 50%;
+  }
+
+  .status-online {
+    background: #dcfce7;
+    color: #166534;
+  }
+  .status-online .device-status-dot { background: #16a34a; }
+  .status-error {
+    background: var(--red-soft);
+    color: var(--red);
+  }
+  .status-error .device-status-dot { background: var(--red); }
+  .status-loading {
+    background: var(--surface-2);
+    color: var(--text-2);
+  }
+  .status-loading .device-status-dot { background: var(--text-3); }
+
+  /* ── Telemetry Table ── */
+  .telemetry-table {
+    width: 100%;
+  }
+  .telemetry-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 11px 22px;
+    border-bottom: 1px solid var(--border);
+    transition: background 0.1s;
+  }
+  .telemetry-row:last-child { border-bottom: none; }
+  .telemetry-row:hover { background: var(--surface-2); }
+
+  .tel-key {
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--text-2);
+    text-transform: capitalize;
+    flex: 1;
+  }
+  .tel-value {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text);
+    text-align: right;
+  }
+  .tel-time {
+    font-size: 10px;
+    color: var(--text-3);
+    text-align: right;
+    margin-left: 12px;
+    min-width: 52px;
+  }
+
+  /* ── Type colors for left bar ── */
+  .device-card[data-type="water"] .device-card-header { border-left: 3px solid var(--water); }
+  .device-card[data-type="energy"] .device-card-header { border-left: 3px solid var(--energy); }
+  .device-card[data-type="occupancy"] .device-card-header { border-left: 3px solid var(--occupancy); }
+
+  .device-card[data-type="water"] .device-icon-wrap { background: var(--water-soft); }
+  .device-card[data-type="energy"] .device-icon-wrap { background: var(--energy-soft); }
+  .device-card[data-type="occupancy"] .device-icon-wrap { background: var(--occupancy-soft); }
+
+  .device-card[data-type="water"] .tel-value { color: var(--water); }
+  .device-card[data-type="energy"] .tel-value { color: var(--energy); }
+  .device-card[data-type="occupancy"] .tel-value { color: var(--occupancy); }
+
+  /* ── Skeleton ── */
+  .skeleton {
+    background: linear-gradient(90deg, var(--surface-2) 25%, #eae8e3 50%, var(--surface-2) 75%);
+    background-size: 200% 100%;
+    animation: shimmer 1.5s infinite;
+    border-radius: 6px;
+  }
+  @keyframes shimmer { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
+
+  /* ── Empty / Error ── */
+  .card-message {
+    padding: 24px 22px;
+    font-size: 13px;
+  }
+  .card-message.error {
+    color: var(--red);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .card-message.empty {
+    color: var(--text-3);
+    text-align: center;
+  }
+
+  /* ── Last updated strip ── */
+  .updated-strip {
+    margin-top: 28px;
+    padding: 12px 16px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 12px;
+    color: var(--text-2);
+  }
+  .updated-strip strong { color: var(--text); }
+
+  /* ── Spinner ── */
+  .spinner {
+    width: 13px; height: 13px;
+    border: 2px solid rgba(255,255,255,0.3);
+    border-top-color: #fff;
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+    display: none;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ── Responsive ── */
+  @media (max-width: 900px) {
+    .sidebar { display: none; }
+    .main { margin-left: 0; padding: 20px; }
+    .summary-row { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<!-- Sidebar -->
+<aside class="sidebar">
+  <div class="brand">
+    <div class="brand-name">Aura</div>
+    <div class="brand-sub">IoT Platform</div>
+  </div>
+
+  <nav class="nav-group">
+    <label>Monitor</label>
+    <a class="nav-item active" href="#">
+      <span class="nav-dot" style="background:#a78bfa"></span>
+      Overview
+    </a>
+    <a class="nav-item" href="#">
+      <span class="nav-dot" style="background:var(--water-soft)"></span>
+      Water
+    </a>
+    <a class="nav-item" href="#">
+      <span class="nav-dot" style="background:#fde68a"></span>
+      Energy
+    </a>
+    <a class="nav-item" href="#">
+      <span class="nav-dot" style="background:#a7f3d0"></span>
+      Occupancy
+    </a>
+  </nav>
+
+  <nav class="nav-group">
+    <label>Manage</label>
+    <a class="nav-item" href="#">Devices</a>
+    <a class="nav-item" href="#">Alerts</a>
+    <a class="nav-item" href="#">Reports</a>
+    <a class="nav-item" href="#">Settings</a>
+  </nav>
+
+  <div class="sidebar-footer">
+    <div class="live-badge">
+      <span class="live-dot" id="liveDot"></span>
+      <span id="liveStatus">Connecting…</span>
+    </div>
+  </div>
+</aside>
+
+<!-- Main Content -->
+<main class="main">
+  <!-- Topbar -->
+  <div class="topbar">
+    <div>
+      <h1 class="page-title">Building Overview</h1>
+      <p class="page-subtitle">Real-time telemetry from 3 smart devices</p>
+    </div>
+    <div class="topbar-actions">
+      <div class="select-wrap">
+        <select id="limitSelect">
+          <option value="5">Latest 5</option>
+          <option value="10" selected>Latest 10</option>
+          <option value="25">Latest 25</option>
+          <option value="50">Latest 50</option>
+        </select>
+      </div>
+      <button class="btn btn-ghost" id="autoBtn" onclick="toggleAutoRefresh()">
+        ▶ Auto-refresh
+      </button>
+      <button class="btn btn-primary" id="fetchBtn" onclick="fetchAll()">
+        <span class="spinner" id="btnSpinner"></span>
+        Refresh
+      </button>
+    </div>
+  </div>
+
+  <!-- Summary Row -->
+  <div class="summary-row" id="summaryRow">
+    <div class="summary-card" data-type="water">
+      <div>
+        <div class="summary-label">Water Flow</div>
+        <div class="summary-value"><span id="sum-water">—</span><span class="summary-unit"></span></div>
+      </div>
+      <div class="summary-icon">💧</div>
+    </div>
+    <div class="summary-card" data-type="energy">
+      <div>
+        <div class="summary-label">Energy Usage</div>
+        <div class="summary-value"><span id="sum-energy">—</span><span class="summary-unit"></span></div>
+      </div>
+      <div class="summary-icon">⚡</div>
+    </div>
+    <div class="summary-card" data-type="occupancy">
+      <div>
+        <div class="summary-label">Occupancy</div>
+        <div class="summary-value"><span id="sum-occupancy">—</span><span class="summary-unit"></span></div>
+      </div>
+      <div class="summary-icon">🏠</div>
+    </div>
+  </div>
+
+  <!-- Device Cards -->
+  <div class="section-label">Device Telemetry</div>
+  <div class="devices-grid" id="devicesGrid">
+    <!-- Filled by JS -->
+  </div>
+
+  <!-- Last Updated -->
+  <div class="updated-strip" id="updatedStrip" style="display:none">
+    <span id="updatedText">Last refreshed: —</span>
+    <span id="deviceCount" style="color:var(--text-3)">—</span>
+  </div>
+</main>
+
+<script>
+const PROXY_BASE = 'http://localhost:3000/proxy/telemetry';
+
+const DEVICES = [
+  { key: 'water',     id: 'fe409ed0-2a89-11f1-afd7-eb430bfb427f', name: 'Water Meter',      icon: '💧', type: 'water' },
+  { key: 'energy',   id: 'dc474360-2a89-11f1-b5ad-e9bed839c74c', name: 'Energy Meter',     icon: '⚡', type: 'energy' },
+  { key: 'occupancy', id: '66d7a250-2a89-11f1-afd7-eb430bfb427f', name: 'Occupancy Sensor', icon: '🏠', type: 'occupancy' }
+];
+
+const SUMMARY_KEYS = { water: null, energy: null, occupancy: null };
+
+let autoInterval = null;
+let autoRunning = false;
+
+// ── Skeleton placeholder on page load ──
+function renderSkeletons() {
+  const grid = document.getElementById('devicesGrid');
+  grid.innerHTML = DEVICES.map(d => `
+    <div class="device-card" data-type="${d.type}">
+      <div class="device-card-header" style="border-left:3px solid transparent">
+        <div class="device-header-left">
+          <div class="device-icon-wrap">${d.icon}</div>
+          <div>
+            <div class="device-name">${d.name}</div>
+            <div class="device-id">${d.id.slice(0,8)}…</div>
+          </div>
+        </div>
+        <div class="device-status status-loading">
+          <span class="device-status-dot"></span> Loading
+        </div>
+      </div>
+      <div style="padding:14px 22px">
+        ${[1,2,3].map(() => `
+          <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border)">
+            <div class="skeleton" style="height:13px;width:100px"></div>
+            <div class="skeleton" style="height:13px;width:60px"></div>
+          </div>`).join('')}
+      </div>
+    </div>`).join('');
+}
+
+function formatTs(ts) {
+  if (!ts) return '';
+  const d = new Date(ts);
+  return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+}
+
+function renderCard(device, telemetry, error) {
+  const statusHtml = error
+    ? `<div class="device-status status-error"><span class="device-status-dot"></span> Error</div>`
+    : `<div class="device-status status-online"><span class="device-status-dot"></span> Online</div>`;
+
+  let bodyHtml = '';
+  if (error) {
+    bodyHtml = `<div class="card-message error">⚠ ${error}</div>`;
+  } else {
+    const keys = Object.keys(telemetry);
+    if (!keys.length) {
+      bodyHtml = `<div class="card-message empty">No telemetry data available.</div>`;
+    } else {
+      bodyHtml = `<div class="telemetry-table">` +
+        keys.slice(0, 8).map(k => {
+          const vals = Array.isArray(telemetry[k]) ? telemetry[k] : [telemetry[k]];
+          const latest = vals[0];
+          const val = latest?.value !== undefined ? latest.value : latest;
+          const ts = formatTs(latest?.ts);
+          return `<div class="telemetry-row">
+            <span class="tel-key">${k.replace(/_/g,' ')}</span>
+            <span class="tel-value">${val !== undefined ? val : '—'}</span>
+            <span class="tel-time">${ts}</span>
+          </div>`;
+        }).join('') + `</div>`;
+    }
+  }
+
+  return `
+    <div class="device-card" data-type="${device.type}">
+      <div class="device-card-header">
+        <div class="device-header-left">
+          <div class="device-icon-wrap">${device.icon}</div>
+          <div>
+            <div class="device-name">${device.name}</div>
+            <div class="device-id">${device.id.slice(0,8)}…</div>
+          </div>
+        </div>
+        ${statusHtml}
+      </div>
+      ${bodyHtml}
+    </div>`;
+}
+
+function updateSummary(key, telemetry) {
+  const el = document.getElementById(`sum-${key}`);
+  if (!el) return;
+  const keys = Object.keys(telemetry);
+  if (!keys.length) { el.textContent = '—'; return; }
+  const k = keys[0];
+  const vals = Array.isArray(telemetry[k]) ? telemetry[k] : [telemetry[k]];
+  const latest = vals[0];
+  const val = latest?.value !== undefined ? latest.value : latest;
+  el.textContent = val !== undefined ? val : '—';
+}
+
+async function fetchAll() {
+  const limit = document.getElementById('limitSelect').value;
+  const btn = document.getElementById('fetchBtn');
+  const spinner = document.getElementById('btnSpinner');
+  btn.disabled = true;
+  spinner.style.display = 'inline-block';
+
+  document.getElementById('liveStatus').textContent = 'Fetching…';
+  renderSkeletons();
+
+  const results = {};
+  const errors = {};
+
+  await Promise.all(DEVICES.map(async device => {
+    try {
+      const res = await fetch(`${PROXY_BASE}/${device.id}?limit=${limit}`);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
+      results[device.key] = data;
+    } catch (e) {
+      errors[device.key] = e.message;
+    }
+  }));
+
+  // Update summary cards
+  DEVICES.forEach(d => {
+    if (results[d.key]) updateSummary(d.key, results[d.key]);
+    else { const el = document.getElementById(`sum-${d.key}`); if (el) el.textContent = '—'; }
+  });
+
+  // Render device cards
+  document.getElementById('devicesGrid').innerHTML = DEVICES.map(d =>
+    renderCard(d, results[d.key] || {}, errors[d.key])
+  ).join('');
+
+  // Updated strip
+  const total = DEVICES.length;
+  const ok = Object.keys(results).length;
+  const strip = document.getElementById('updatedStrip');
+  strip.style.display = 'flex';
+  document.getElementById('updatedText').textContent = `Last refreshed: ${new Date().toLocaleTimeString()}`;
+  document.getElementById('deviceCount').textContent = `${ok}/${total} devices online`;
+
+  // Live dot
+  document.getElementById('liveStatus').textContent = ok === total ? 'All devices live' : `${ok}/${total} online`;
+  document.getElementById('liveDot').style.background = ok < total ? '#f87171' : '#4ade80';
+  document.getElementById('liveDot').style.boxShadow = `0 0 6px ${ok < total ? '#f87171' : '#4ade80'}`;
+
+  btn.disabled = false;
+  spinner.style.display = 'none';
+}
+
+function toggleAutoRefresh() {
+  const btn = document.getElementById('autoBtn');
+  if (autoRunning) {
+    clearInterval(autoInterval);
+    autoRunning = false;
+    btn.classList.remove('active');
+    btn.textContent = '▶ Auto-refresh';
+  } else {
+    autoRunning = true;
+    btn.classList.add('active');
+    btn.textContent = '⏹ Stop auto';
+    fetchAll();
+    autoInterval = setInterval(fetchAll, 30000);
+  }
+}
+
+// Load on init
+document.addEventListener('DOMContentLoaded', () => {
+  renderSkeletons();
+  fetchAll();
+});
+</script>
+</body>
+</html>
