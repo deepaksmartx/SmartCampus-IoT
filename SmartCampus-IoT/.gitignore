@@ -1,0 +1,93 @@
+# Environment variables and secrets
+.env
+.env.local
+.env.*.local
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+pip-log.txt
+pip-delete-this-directory.txt
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Virtual environments
+venv/
+ENV/
+env/
+.venv
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Node.js / Frontend
+node_modules/
+npm-debug.log
+yarn-error.log
+build/
+dist/
+
+# Testing & Temp
+test_*.py
+simple_test.py
+debug_*.py
+check_*.py
+kill_*.py
+add_*.py
+migrate_*.py
+*.sh
+*.ps1
+stop_all.py
+
+# Development documentation
+TESTING.md
+TESTING_REPORT.md
+FINAL_TEST_REPORT.md
+INTEGRATION_TESTING.md
+INTEGRATION_VERIFICATION_REPORT.md
+SMARTCAMPUS_UI_INTEGRATION.md
+BUILDINGS_TESTING_GUIDE.md
+BUILDINGS_FRONTEND_SUMMARY.md
+BUILDING_IMPLEMENTATION.md
+BUILDINGS_CAMPUS_FIX.md
+BUILDINGS_TESTING_COMPLETE.md
+CLEANUP_GUIDE.md
+
+# Lock files (use specific versions only)
+package-lock.json
+
+# Database files
+*.sqlite
+*.sqlite3
+*.db
+
+# Logs
+*.log
+logs/
+
+# Cleanup script (optional - remove after using)
+cleanup.ps1
