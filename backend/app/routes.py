@@ -110,12 +110,14 @@ def login(user: schemas.UserLogin, db: Session = Depends(get_db)):
 def update_dashboard(
     device_type: str = Query(..., description="occupancy / water / energy"),
     facility_type: str = Query(..., description="Hostel / Lab / Campus"),
-    facility_name: str = Query(..., description="Room name or building")
+    facility_name: str = Query(..., description="Room name or building"),
+    sensor_id: str = Query(..., description="Unique sensor/device identifier")
 ):
     status, response = send_dashboard_data(
         device_type,
         facility_type,
-        facility_name
+        facility_name,
+        sensor_id
     )
 
     message = (
@@ -127,5 +129,6 @@ def update_dashboard(
     return {
     "message": message,
     "status_code": status,
+    "sensor_id": sensor_id,
     "response": response
     }

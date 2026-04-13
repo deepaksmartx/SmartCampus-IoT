@@ -9,6 +9,9 @@ class UserRole(str, Enum):
     STAFF = "Staff"
 
 class FacilityType(str, Enum):
+    BUS = "Bus"
+    DINING = "Dining"
+    SPORTS = "Sports"
     CLASSROOM = "Classroom"
     LAB = "Lab"
     AUDITORIUM = "Auditorium"
@@ -17,7 +20,12 @@ class FacilityType(str, Enum):
     LIBRARY = "Library"
     CAFE = "Cafe"
     HOSTEL = "Hostel"
+    CUSTOM = "Custom"
     OTHER = "Other"
+
+class AcademicPeriod(str, Enum):
+    SEMESTER = "Semester"
+    TRIMESTER = "Trimester"
 
 class BookingStatus(str, Enum):
     PENDING = "Pending"
@@ -115,10 +123,14 @@ class FloorResponse(FloorBase):
 class FacilityBase(BaseModel):
     name: str
     type: FacilityType
+    subtype: str | None = None
+    custom_type: str | None = None
     building_id: int
     floor_id: int | None = None
     capacity: int
     requires_approval: bool = False
+    sensor_id: str | None = None
+    manager_id: int | None = None
     description: str | None = None
 
 class FacilityCreate(FacilityBase):
@@ -127,10 +139,14 @@ class FacilityCreate(FacilityBase):
 class FacilityUpdate(BaseModel):
     name: str | None = None
     type: FacilityType | None = None
+    subtype: str | None = None
+    custom_type: str | None = None
     building_id: int | None = None
     floor_id: int | None = None
     capacity: int | None = None
     requires_approval: bool | None = None
+    sensor_id: str | None = None
+    manager_id: int | None = None
     description: str | None = None
 
 class FacilityResponse(FacilityBase):
@@ -145,8 +161,9 @@ class FacilityResponse(FacilityBase):
 # ─────── Booking Schemas ───────
 class BookingBase(BaseModel):
     facility_id: int
-    start_time: datetime
-    end_time: datetime
+    start_time: datetime | None = None
+    end_time: datetime | None = None
+    academic_period: AcademicPeriod | None = None
     notes: str | None = None
 
 class BookingCreate(BookingBase):
@@ -156,6 +173,7 @@ class BookingCreate(BookingBase):
 class BookingUpdate(BaseModel):
     start_time: datetime | None = None
     end_time: datetime | None = None
+    academic_period: AcademicPeriod | None = None
     notes: str | None = None
 
 class BookingResponse(BookingBase):
@@ -221,3 +239,29 @@ class FacilityAvailabilityResponse(BaseModel):
     is_available: bool
     occupied_slots: list[OccupiedSlot] = []
     total_slots: int
+
+
+class InventoryBase(BaseModel):
+    facility_id: int
+    item_name: str
+    quantity: int
+    unit: str | None = None
+    status: str = "available"
+
+
+class InventoryCreate(InventoryBase):
+    pass
+
+
+class InventoryUpdate(BaseModel):
+    item_name: str | None = None
+    quantity: int | None = None
+    unit: str | None = None
+    status: str | None = None
+
+
+class InventoryResponse(InventoryBase):
+    id: int
+
+    class Config:
+        from_attributes = True

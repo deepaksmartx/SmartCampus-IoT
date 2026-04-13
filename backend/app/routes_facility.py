@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
+from sqlalchemy import or_
 from app.database import get_db
 from app import models, schemas
 from app.auth import verify_token
@@ -18,6 +19,13 @@ def require_admin(user):
 def require_admin_or_manager(user):
     if user.role not in [UserRole.ADMIN, UserRole.FACILITY_MANAGER]:
         raise HTTPException(status_code=403, detail="Admin or Facility Manager required")
+
+
+def ensure_manager_access(user, facility):
+    if user.role == UserRole.ADMIN:
+        return
+    if facility.manager_id != user.id:
+        raise HTTPException(status_code=403, detail="Facility manager can only access assigned facilities")
 
 
 # ═══════ CAMPUS ROUTES ═══════
@@ -85,8 +93,8 @@ def create_facility(
     db: Session = Depends(get_db),
     user=Depends(verify_token),
 ):
-    """Create a new facility. Admin only."""
-    require_admin(user)
+    """Create a new facility. Admin and facility manager."""
+    require_admin_or_manager(user)
 
     # Verify building exists
     building = db.query(models.Building).filter(
@@ -103,13 +111,28 @@ def create_facility(
         if not floor:
             raise HTTPException(status_code=404, detail="Floor not found")
 
+    if facility_data.type == FacilityType.CUSTOM and not facility_data.custom_type:
+        raise HTTPException(status_code=400, detail="custom_type is required for Custom facility type")
+
+    manager_id = facility_data.manager_id
+    if user.role == UserRole.FACILITY_MANAGER:
+        manager_id = user.id
+    elif manager_id:
+        manager = db.query(models.User).filter(models.User.id == manager_id).first()
+        if not manager or manager.role != UserRole.FACILITY_MANAGER:
+            raise HTTPException(status_code=400, detail="manager_id must belong to a facility manager")
+
     new_facility = models.Facility(
         name=facility_data.name,
         type=facility_data.type,
+        subtype=facility_data.subtype,
+        custom_type=facility_data.custom_type,
         building_id=facility_data.building_id,
         floor_id=facility_data.floor_id,
         capacity=facility_data.capacity,
         requires_approval=facility_data.requires_approval,
+        sensor_id=facility_data.sensor_id,
+        manager_id=manager_id,
         description=facility_data.description,
     )
     db.add(new_facility)
@@ -147,6 +170,12 @@ def list_facilities(
     if min_capacity:
         query = query.filter(models.Facility.capacity >= min_capacity)
 
+    if user.role == UserRole.FACILITY_MANAGER:
+        # Show both manager-owned and unassigned facilities so managers are never blocked by empty state.
+        query = query.filter(
+            or_(models.Facility.manager_id == user.id, models.Facility.manager_id.is_(None))
+        )
+
     facilities = query.order_by(models.Facility.name).all()
     return facilities
 
@@ -177,8 +206,8 @@ def update_facility(
     db: Session = Depends(get_db),
     user=Depends(verify_token),
 ):
-    """Update facility details. Admin only."""
-    require_admin(user)
+    """Update facility details. Admin or assigned manager."""
+    require_admin_or_manager(user)
 
     facility = db.query(models.Facility).filter(
         models.Facility.id == facility_id
@@ -186,6 +215,8 @@ def update_facility(
 
     if not facility:
         raise HTTPException(status_code=404, detail="Facility not found")
+
+    ensure_manager_access(user, facility)
 
     # Verify building exists if updating
     if facility_data.building_id:
@@ -203,11 +234,18 @@ def update_facility(
         if not floor:
             raise HTTPException(status_code=404, detail="Floor not found")
 
+    if facility_data.type == FacilityType.CUSTOM and not facility_data.custom_type:
+        raise HTTPException(status_code=400, detail="custom_type is required for Custom facility type")
+
     # Update fields
     if facility_data.name is not None:
         facility.name = facility_data.name
     if facility_data.type is not None:
         facility.type = facility_data.type
+    if facility_data.subtype is not None:
+        facility.subtype = facility_data.subtype
+    if facility_data.custom_type is not None:
+        facility.custom_type = facility_data.custom_type
     if facility_data.building_id is not None:
         facility.building_id = facility_data.building_id
     if facility_data.floor_id is not None:
@@ -216,6 +254,13 @@ def update_facility(
         facility.capacity = facility_data.capacity
     if facility_data.requires_approval is not None:
         facility.requires_approval = facility_data.requires_approval
+    if facility_data.sensor_id is not None:
+        facility.sensor_id = facility_data.sensor_id
+    if facility_data.manager_id is not None and user.role == UserRole.ADMIN:
+        manager = db.query(models.User).filter(models.User.id == facility_data.manager_id).first()
+        if not manager or manager.role != UserRole.FACILITY_MANAGER:
+            raise HTTPException(status_code=400, detail="manager_id must belong to a facility manager")
+        facility.manager_id = facility_data.manager_id
     if facility_data.description is not None:
         facility.description = facility_data.description
 
@@ -231,8 +276,8 @@ def delete_facility(
     db: Session = Depends(get_db),
     user=Depends(verify_token),
 ):
-    """Delete a facility. Admin only. Cannot delete if there are active bookings."""
-    require_admin(user)
+    """Delete a facility. Admin or assigned manager. Cannot delete if there are active bookings."""
+    require_admin_or_manager(user)
 
     facility = db.query(models.Facility).filter(
         models.Facility.id == facility_id
@@ -240,6 +285,8 @@ def delete_facility(
 
     if not facility:
         raise HTTPException(status_code=404, detail="Facility not found")
+
+    ensure_manager_access(user, facility)
 
     # Check for active bookings
     active_bookings = db.query(models.Booking).filter(
@@ -259,7 +306,50 @@ def delete_facility(
 
 
 # GET: Facility Type Options
-@facilities_router.get("/config/types")
+@facilities_router.get("/config/facility-types")
 def get_facility_types():
     """Get list of available facility types."""
-    return {"facility_types": [ftype.value for ftype in FacilityType]}
+    return {
+        "facility_types": [ftype.value for ftype in FacilityType],
+        "allow_custom": True,
+        "subtypes": {
+            "Hostel": ["Student Room", "Guest Room"],
+            "Sports": ["Indoor", "Outdoor", "Gym"],
+            "Dining": ["Cafeteria", "Mess", "Food Court"],
+            "Bus": ["Shuttle", "Intercity", "Staff"]
+        }
+    }
+
+
+@facilities_router.post("/inventory", response_model=schemas.InventoryResponse, status_code=201)
+def create_inventory_item(
+    payload: schemas.InventoryCreate,
+    db: Session = Depends(get_db),
+    user=Depends(verify_token),
+):
+    require_admin_or_manager(user)
+    facility = db.query(models.Facility).filter(models.Facility.id == payload.facility_id).first()
+    if not facility:
+        raise HTTPException(status_code=404, detail="Facility not found")
+    ensure_manager_access(user, facility)
+
+    item = models.FacilityInventory(**payload.model_dump())
+    db.add(item)
+    db.commit()
+    db.refresh(item)
+    return item
+
+
+@facilities_router.get("/{facility_id}/inventory", response_model=list[schemas.InventoryResponse])
+def list_inventory_items(
+    facility_id: int,
+    db: Session = Depends(get_db),
+    user=Depends(verify_token),
+):
+    require_admin_or_manager(user)
+    facility = db.query(models.Facility).filter(models.Facility.id == facility_id).first()
+    if not facility:
+        raise HTTPException(status_code=404, detail="Facility not found")
+    ensure_manager_access(user, facility)
+
+    return db.query(models.FacilityInventory).filter(models.FacilityInventory.facility_id == facility_id).all()

@@ -15,9 +15,9 @@ const MODULES = [
     arrowColor: "#60a5fa",
   },
   {
-    key: "buildings",
-    title: "Buildings",
-    desc: "View and manage campus buildings and facility resources.",
+    key: "facilities",
+    title: "Facilities & Inventory",
+    desc: "Create facilities, define types/subtypes, and manage related inventories.",
     icon: "🏢",
     color: "blue",
     iconBg: "rgba(26,86,219,0.15)",
@@ -112,8 +112,8 @@ function ManagerDashboard() {
   useEffect(() => {
     const fetchPendingCount = async () => {
       try {
-        const count = await approvalAPI.getPendingApprovalsCount();
-        setPendingCount(count);
+        const response = await approvalAPI.getPendingApprovalsCount();
+        setPendingCount(response?.pending_count ?? 0);
       } catch (err) {
         console.log("Could not fetch pending count:", err);
         setPendingCount(0);
@@ -171,7 +171,8 @@ function ManagerDashboard() {
         navigate("/admin/approvals");
         break;
       case "buildings":
-        navigate("/buildings");
+      case "facilities":
+        navigate("/facilities");
         break;
       default:
         alert(`${moduleKey} module coming soon!`);

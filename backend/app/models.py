@@ -10,6 +10,9 @@ class UserRole(str, enum.Enum):
     STAFF = "Staff"
 
 class FacilityType(str, enum.Enum):
+    BUS = "Bus"
+    DINING = "Dining"
+    SPORTS = "Sports"
     CLASSROOM = "Classroom"
     LAB = "Lab"
     AUDITORIUM = "Auditorium"
@@ -18,6 +21,7 @@ class FacilityType(str, enum.Enum):
     LIBRARY = "Library"
     CAFE = "Cafe"
     HOSTEL = "Hostel"
+    CUSTOM = "Custom"
     OTHER = "Other"
 
 class BookingStatus(str, enum.Enum):
@@ -30,6 +34,11 @@ class ApprovalStatus(str, enum.Enum):
     PENDING = "Pending"
     APPROVED = "Approved"
     REJECTED = "Rejected"
+
+class AcademicPeriod(str, enum.Enum):
+    SEMESTER = "Semester"
+    TRIMESTER = "Trimester"
+
 
 class User(Base):
     __tablename__ = "users"
@@ -82,10 +91,14 @@ class Facility(Base):
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String(255), nullable=False)
     type = Column(Enum(FacilityType), nullable=False, default=FacilityType.CLASSROOM)
+    subtype = Column(String(100), nullable=True)
+    custom_type = Column(String(100), nullable=True)
     building_id = Column(Integer, ForeignKey("buildings.id"), nullable=False)
     floor_id = Column(Integer, ForeignKey("floors.id"), nullable=True)
     capacity = Column(Integer, nullable=False)
     requires_approval = Column(Boolean, default=False)
+    sensor_id = Column(String(100), nullable=True, unique=True)
+    manager_id = Column(Integer, ForeignKey("users.id"), nullable=True)
     description = Column(Text, nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
@@ -100,8 +113,9 @@ class Booking(Base):
     id = Column(Integer, primary_key=True, index=True)
     facility_id = Column(Integer, ForeignKey("facilities.id"), nullable=False)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
-    start_time = Column(DateTime(timezone=True), nullable=False, index=True)
-    end_time = Column(DateTime(timezone=True), nullable=False, index=True)
+    start_time = Column(DateTime(timezone=True), nullable=True, index=True)
+    end_time = Column(DateTime(timezone=True), nullable=True, index=True)
+    academic_period = Column(Enum(AcademicPeriod), nullable=True)
     status = Column(Enum(BookingStatus), nullable=False, default=BookingStatus.PENDING)
     recurring_group_id = Column(String(255), nullable=True)  # Groups recurring bookings
     notes = Column(Text, nullable=True)
@@ -125,3 +139,16 @@ class BookingApproval(Base):
 
     def __repr__(self):
         return f"<BookingApproval id={self.id} booking_id={self.booking_id} status={self.status}>"
+
+
+class FacilityInventory(Base):
+    __tablename__ = "facility_inventories"
+
+    id = Column(Integer, primary_key=True, index=True)
+    facility_id = Column(Integer, ForeignKey("facilities.id"), nullable=False, index=True)
+    item_name = Column(String(255), nullable=False)
+    quantity = Column(Integer, nullable=False, default=0)
+    unit = Column(String(50), nullable=True)
+    status = Column(String(50), nullable=False, default="available")
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())

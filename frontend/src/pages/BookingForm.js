@@ -16,6 +16,7 @@ function BookingForm() {
   const [startTime, setStartTime] = useState("10:00");
   const [endDate, setEndDate] = useState("");
   const [endTime, setEndTime] = useState("11:00");
+  const [academicPeriod, setAcademicPeriod] = useState("Semester");
 
   const [notes, setNotes] = useState("");
   const [isRecurring, setIsRecurring] = useState(false);
@@ -48,8 +49,10 @@ function BookingForm() {
     try {
       const data = await facilityAPI.getAllFacilities();
       setFacilities(data);
+      setError(null);
     } catch (err) {
       console.error("Error fetching facilities:", err);
+      setError(err.response?.data?.detail || "Failed to load facilities. Check backend server and login token.");
     }
   };
 
@@ -111,7 +114,11 @@ function BookingForm() {
         setError("Please select a facility");
         return;
       }
-      if (!startDate || !startTime || !endDate || !endTime) {
+      const isHostelBooking =
+        facilityDetails?.type === "Hostel" ||
+        facilityDetails?.subtype === "Guest Room";
+
+      if (!isHostelBooking && (!startDate || !startTime || !endDate || !endTime)) {
         setError("Please fill in all time fields");
         return;
       }
@@ -119,7 +126,7 @@ function BookingForm() {
       const startDateTime = new Date(`${startDate}T${startTime}:00`);
       const endDateTime = new Date(`${endDate}T${endTime}:00`);
 
-      if (endDateTime <= startDateTime) {
+      if (!isHostelBooking && endDateTime <= startDateTime) {
         setError("End time must be after start time");
         return;
       }
@@ -131,10 +138,15 @@ function BookingForm() {
 
       const bookingData = {
         facility_id: parseInt(selectedFacility),
-        start_time: startDateTime.toISOString(),
-        end_time: endDateTime.toISOString(),
         notes: notes || undefined,
       };
+
+      if (isHostelBooking) {
+        bookingData.academic_period = academicPeriod;
+      } else {
+        bookingData.start_time = startDateTime.toISOString();
+        bookingData.end_time = endDateTime.toISOString();
+      }
 
       if (isRecurring) {
         bookingData.recurring_pattern = recurringPattern;
@@ -300,10 +312,15 @@ function BookingForm() {
               <option value="">-- Choose a facility --</option>
               {facilities.map((facility) => (
                 <option key={facility.id} value={facility.id}>
-                  {facility.name} ({facility.type}) - Capacity: {facility.capacity}
+                  {facility.name} ({facility.type}{facility.subtype ? ` - ${facility.subtype}` : ""}) - Capacity: {facility.capacity}
                 </option>
               ))}
             </select>
+            {facilities.length === 0 && (
+              <p style={{ marginTop: "8px", fontSize: "12px", color: "#fca5a5" }}>
+                No facilities found for this account. Login as Manager/Admin or seed data and restart backend.
+              </p>
+            )}
           </div>
 
           {/* Facility Details */}
@@ -333,16 +350,8 @@ function BookingForm() {
             </div>
           )}
 
-          {/* Start Date & Time */}
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "1fr 1fr",
-              gap: "12px",
-              marginBottom: "20px",
-            }}
-          >
-            <div>
+          {facilityDetails?.type === "Hostel" || facilityDetails?.subtype === "Guest Room" ? (
+            <div style={{ marginBottom: "20px" }}>
               <label
                 style={{
                   display: "block",
@@ -352,16 +361,11 @@ function BookingForm() {
                   marginBottom: "8px",
                 }}
               >
-                Start Date
+                Academic Period
               </label>
-              <input
-                type="date"
-                value={startDate}
-                onChange={(e) => {
-                  setStartDate(e.target.value);
-                  handleTimeChange();
-                }}
-                required
+              <select
+                value={academicPeriod}
+                onChange={(e) => setAcademicPeriod(e.target.value)}
                 style={{
                   width: "100%",
                   padding: "10px 14px",
@@ -370,114 +374,90 @@ function BookingForm() {
                   borderRadius: "8px",
                   color: "#f8fafc",
                   fontSize: "14px",
-                }}
-              />
-            </div>
-            <div>
-              <label
-                style={{
-                  display: "block",
-                  fontSize: "12px",
-                  fontWeight: "600",
-                  color: "#94a3b8",
-                  marginBottom: "8px",
                 }}
               >
-                Start Time
-              </label>
-              <input
-                type="time"
-                value={startTime}
-                onChange={(e) => {
-                  setStartTime(e.target.value);
-                  handleTimeChange();
-                }}
-                required
-                style={{
-                  width: "100%",
-                  padding: "10px 14px",
-                  background: "rgba(15,23,42,0.6)",
-                  border: "1px solid rgba(255,255,255,0.1)",
-                  borderRadius: "8px",
-                  color: "#f8fafc",
-                  fontSize: "14px",
-                }}
-              />
+                <option value="Semester">Semester</option>
+                <option value="Trimester">Trimester</option>
+              </select>
             </div>
-          </div>
-
-          {/* End Date & Time */}
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "1fr 1fr",
-              gap: "12px",
-              marginBottom: "20px",
-            }}
-          >
-            <div>
-              <label
+          ) : (
+            <>
+              <div
                 style={{
-                  display: "block",
-                  fontSize: "12px",
-                  fontWeight: "600",
-                  color: "#94a3b8",
-                  marginBottom: "8px",
+                  display: "grid",
+                  gridTemplateColumns: "1fr 1fr",
+                  gap: "12px",
+                  marginBottom: "20px",
                 }}
               >
-                End Date
-              </label>
-              <input
-                type="date"
-                value={endDate}
-                onChange={(e) => {
-                  setEndDate(e.target.value);
-                  handleTimeChange();
-                }}
-                required
+                <div>
+                  <label
+                    style={{
+                      display: "block",
+                      fontSize: "12px",
+                      fontWeight: "600",
+                      color: "#94a3b8",
+                      marginBottom: "8px",
+                    }}
+                  >
+                    Start Date
+                  </label>
+                  <input type="date" value={startDate} onChange={(e) => { setStartDate(e.target.value); handleTimeChange(); }} required />
+                </div>
+                <div>
+                  <label
+                    style={{
+                      display: "block",
+                      fontSize: "12px",
+                      fontWeight: "600",
+                      color: "#94a3b8",
+                      marginBottom: "8px",
+                    }}
+                  >
+                    Start Time
+                  </label>
+                  <input type="time" value={startTime} onChange={(e) => { setStartTime(e.target.value); handleTimeChange(); }} required />
+                </div>
+              </div>
+              <div
                 style={{
-                  width: "100%",
-                  padding: "10px 14px",
-                  background: "rgba(15,23,42,0.6)",
-                  border: "1px solid rgba(255,255,255,0.1)",
-                  borderRadius: "8px",
-                  color: "#f8fafc",
-                  fontSize: "14px",
-                }}
-              />
-            </div>
-            <div>
-              <label
-                style={{
-                  display: "block",
-                  fontSize: "12px",
-                  fontWeight: "600",
-                  color: "#94a3b8",
-                  marginBottom: "8px",
+                  display: "grid",
+                  gridTemplateColumns: "1fr 1fr",
+                  gap: "12px",
+                  marginBottom: "20px",
                 }}
               >
-                End Time
-              </label>
-              <input
-                type="time"
-                value={endTime}
-                onChange={(e) => {
-                  setEndTime(e.target.value);
-                  handleTimeChange();
-                }}
-                required
-                style={{
-                  width: "100%",
-                  padding: "10px 14px",
-                  background: "rgba(15,23,42,0.6)",
-                  border: "1px solid rgba(255,255,255,0.1)",
-                  borderRadius: "8px",
-                  color: "#f8fafc",
-                  fontSize: "14px",
-                }}
-              />
-            </div>
-          </div>
+                <div>
+                  <label
+                    style={{
+                      display: "block",
+                      fontSize: "12px",
+                      fontWeight: "600",
+                      color: "#94a3b8",
+                      marginBottom: "8px",
+                    }}
+                  >
+                    End Date
+                  </label>
+                  <input type="date" value={endDate} onChange={(e) => { setEndDate(e.target.value); handleTimeChange(); }} required />
+                </div>
+                <div>
+                  <label
+                    style={{
+                      display: "block",
+                      fontSize: "12px",
+                      fontWeight: "600",
+                      color: "#94a3b8",
+                      marginBottom: "8px",
+                    }}
+                  >
+                    End Time
+                  </label>
+                  <input type="time" value={endTime} onChange={(e) => { setEndTime(e.target.value); handleTimeChange(); }} required />
+                </div>
+              </div>
+            </>
+          )}
 
           {/* Conflict Warning */}
           {conflict && (
