@@ -2,6 +2,9 @@ from fastapi import FastAPI
 from app.database import Base, engine
 from app.routes import auth, facility, booking
 from app.routes import iot
+from app.routes import manager
+
+app.include_router(manager.router)
 
 app.include_router(iot.router)
 
