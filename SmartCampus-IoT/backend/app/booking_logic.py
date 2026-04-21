@@ -1,62 +1,89 @@
-from typing import Optional
+"""
+Booking Logic Module
+Handles:
+- Conflict detection
+- Time validation
+- Hostel booking logic (capacity, gender)
+- Waitlist
+- Failed booking logging
+"""
 
-# Example roles
-class UserRole(str, Enum):
-    STUDENT = "student"
-    GUEST = "guest"
-    ADMIN = "admin"
+from datetime import datetime, timedelta, timezone
+from sqlalchemy.orm import Session
+from . import models
 
 
-# ✅ NEW: Capacity + Gender + Priority + Waitlist
-def process_hostel_booking(
-    user: models.User,
-    facility: models.Facility,
-    start_time: datetime,
-    end_time: datetime,
-    db: Session
-):
-    """
-    Smart hostel booking logic:
-    - Capacity check
-    - Gender restriction
-    - Priority handling
-    - Waitlist support
-    """
 
-    # 1️⃣ Validate time
-    valid, msg = validate_booking_times(start_time, end_time)
-    if not valid:
-        return {"status": "failed", "reason": msg}
+def validate_booking_times(start_time: datetime, end_time: datetime):
+    now = datetime.now(timezone.utc)
 
-    # 2️⃣ Gender restriction (if hostel has rule)
-    if facility.gender and facility.gender != user.gender:
-        return {
-            "status": "failed",
-            "reason": "Gender not allowed for this hostel"
-        }
+    if end_time <= start_time:
+        return False, "End time must be after start time"
 
-    # 3️⃣ Check existing bookings count
-    active_bookings = db.query(models.Booking).filter(
-        models.Booking.facility_id == facility.id,
+    if start_time <= now:
+        return False, "Start time must be in the future"
+
+    if end_time - start_time > timedelta(hours=8):
+        return False, "Max booking duration is 8 hours"
+
+    if end_time - start_time < timedelta(minutes=30):
+        return False, "Minimum booking duration is 30 minutes"
+
+    return True, ""
+
+
+
+
+def check_booking_conflict(facility_id, start_time, end_time, db: Session):
+    conflicts = db.query(models.Booking).filter(
+        models.Booking.facility_id == facility_id,
         models.Booking.status == models.BookingStatus.CONFIRMED,
         models.Booking.start_time < end_time,
-        models.Booking.end_time > start_time,
+        models.Booking.end_time > start_time
+    ).all()
+
+    return len(conflicts) > 0, conflicts
+
+
+
+def process_hostel_booking(user, facility, start_time, end_time, db: Session):
+
+    1️⃣ Validate time
+    valid, msg = validate_booking_times(start_time, end_time)
+    if not valid:
+        log_failed_booking(user.id, facility.id, msg, db)
+        return {"status": "failed", "reason": msg}
+
+    2️⃣ Gender restriction
+    if facility.gender != "any" and user.gender != facility.gender:
+        reason = "Gender not allowed for this hostel"
+        log_failed_booking(user.id, facility.id, reason, db)
+        return {"status": "failed", "reason": reason}
+
+    3️⃣ Check conflict
+    has_conflict, _ = check_booking_conflict(facility.id, start_time, end_time, db)
+
+    # 4️⃣ Count active bookings
+    active_count = db.query(models.Booking).filter(
+        models.Booking.facility_id == facility.id,
+        models.Booking.status == models.BookingStatus.CONFIRMED
     ).count()
 
-    # 4️⃣ Capacity check
-    if active_bookings >= facility.capacity:
+    5️⃣ Capacity check
+    if active_count >= facility.capacity or has_conflict:
 
-        # Priority logic
-        if user.role == UserRole.STUDENT:
-            # Try to replace a guest booking (optional advanced logic)
-            guest_booking = db.query(models.Booking).filter(
+        # Priority: Student > Staff
+        if user.role == models.UserRole.STUDENT:
+
+            # Try replacing non-student booking
+            replace = db.query(models.Booking).filter(
                 models.Booking.facility_id == facility.id,
-                models.Booking.user_role == UserRole.GUEST,
-                models.Booking.status == models.BookingStatus.CONFIRMED
+                models.Booking.status == models.BookingStatus.CONFIRMED,
+                models.Booking.user_role != models.UserRole.STUDENT
             ).first()
 
-            if guest_booking:
-                guest_booking.status = models.BookingStatus.CANCELLED
+            if replace:
+                replace.status = models.BookingStatus.CANCELLED
                 db.commit()
             else:
                 return add_to_waitlist(user, facility, start_time, end_time, db)
@@ -64,26 +91,27 @@ def process_hostel_booking(
         else:
             return add_to_waitlist(user, facility, start_time, end_time, db)
 
-    # 5️⃣ No conflict → Confirm booking
-    new_booking = models.Booking(
-        user_id=user.id,
+    6️⃣ Create booking
+    booking = models.Booking(
         facility_id=facility.id,
+        user_id=user.id,
         start_time=start_time,
         end_time=end_time,
-        status=models.BookingStatus.CONFIRMED
+        status=models.BookingStatus.CONFIRMED,
+        user_role=user.role
     )
 
-    db.add(new_booking)
+    db.add(booking)
     db.commit()
-    db.refresh(new_booking)
+    db.refresh(booking)
 
     return {
         "status": "confirmed",
-        "booking_id": new_booking.id
+        "booking_id": booking.id
     }
 
 
-# ✅ NEW: Waitlist system
+
 def add_to_waitlist(user, facility, start_time, end_time, db: Session):
     wait = models.Waitlist(
         user_id=user.id,
@@ -101,13 +129,42 @@ def add_to_waitlist(user, facility, start_time, end_time, db: Session):
     }
 
 
-# ✅ NEW: Failed booking logger
-def log_failed_booking(user, facility, reason, db: Session):
+
+
+def log_failed_booking(user_id, facility_id, reason, db: Session):
     failed = models.FailedBooking(
-        user_id=user.id,
-        facility_id=facility.id,
+        user_id=user_id,
+        facility_id=facility_id,
         reason=reason
     )
 
     db.add(failed)
     db.commit()
+
+
+
+def get_facility_availability(facility_id, date: datetime, db: Session):
+    start = date.replace(hour=0, minute=0, second=0, microsecond=0)
+    end = start + timedelta(days=1)
+
+    bookings = db.query(models.Booking).filter(
+        models.Booking.facility_id == facility_id,
+        models.Booking.start_time >= start,
+        models.Booking.end_time <= end,
+        models.Booking.status == models.BookingStatus.CONFIRMED
+    ).all()
+
+    slots = [
+        {
+            "start_time": b.start_time.isoformat(),
+            "end_time": b.end_time.isoformat()
+        }
+        for b in bookings
+    ]
+
+    return {
+        "facility_id": facility_id,
+        "date": date.date().isoformat(),
+        "booked_slots": slots,
+        "total_bookings": len(slots)
+    }
