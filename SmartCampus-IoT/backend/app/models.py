@@ -1,13 +1,16 @@
-from sqlalchemy import Column, Integer, String, DateTime, Enum, ForeignKey, Boolean, Text, DECIMAL
+from sqlalchemy import Column, Integer, String, DateTime, Enum, ForeignKey, Boolean, Text
 from sqlalchemy.sql import func
 from .database import Base
 import enum
+
+
 
 class UserRole(str, enum.Enum):
     ADMIN = "Admin"
     FACILITY_MANAGER = "Facility Manager"
     STUDENT = "Student"
     STAFF = "Staff"
+
 
 class FacilityType(str, enum.Enum):
     CLASSROOM = "Classroom"
@@ -20,16 +23,20 @@ class FacilityType(str, enum.Enum):
     HOSTEL = "Hostel"
     OTHER = "Other"
 
+
 class BookingStatus(str, enum.Enum):
     PENDING = "Pending"
     CONFIRMED = "Confirmed"
     CANCELLED = "Cancelled"
     REJECTED = "Rejected"
 
+
 class ApprovalStatus(str, enum.Enum):
     PENDING = "Pending"
     APPROVED = "Approved"
     REJECTED = "Rejected"
+
+
 
 class User(Base):
     __tablename__ = "users"
@@ -38,14 +45,20 @@ class User(Base):
     name = Column(String(100), nullable=False)
     email = Column(String(255), unique=True, index=True, nullable=False)
     phone_number = Column(String(20), nullable=True)
-    role = Column(Enum(UserRole), nullable=False, default=UserRole.STUDENT)  # Restricted to: Admin, Facility Manager, Student, Staff
-    profile_photo = Column(String(500), nullable=True)         # stores URL or file path
+
+    role = Column(Enum(UserRole), nullable=False, default=UserRole.STUDENT)
+
+    # ✅ NEW (for hostel logic)
+    gender = Column(String(10), nullable=True)  # male / female
+
+    profile_photo = Column(String(500), nullable=True)
     hashed_password = Column(String(255), nullable=False)
+
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 
-    def __repr__(self):
-        return f"<User id={self.id} name={self.name} email={self.email} role={self.role}>"
+
+
 
 class Campus(Base):
     __tablename__ = "campuses"
@@ -53,17 +66,19 @@ class Campus(Base):
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String(255), nullable=False)
 
+
+
 class Building(Base):
     __tablename__ = "buildings"
 
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String(255), nullable=False)
     campus_id = Column(Integer, ForeignKey("campuses.id"), nullable=False)
+
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 
-    def __repr__(self):
-        return f"<Building id={self.id} name={self.name} campus_id={self.campus_id}>"
+
 
 class Floor(Base):
     __tablename__ = "floors"
@@ -72,8 +87,7 @@ class Floor(Base):
     floor_no = Column(Integer, nullable=False)
     building_id = Column(Integer, ForeignKey("buildings.id"), nullable=False)
 
-    def __repr__(self):
-        return f"<Floor id={self.id} floor_no={self.floor_no} building_id={self.building_id}>"
+
 
 
 class Facility(Base):
@@ -81,35 +95,52 @@ class Facility(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String(255), nullable=False)
+
     type = Column(Enum(FacilityType), nullable=False, default=FacilityType.CLASSROOM)
+
     building_id = Column(Integer, ForeignKey("buildings.id"), nullable=False)
     floor_id = Column(Integer, ForeignKey("floors.id"), nullable=True)
+
     capacity = Column(Integer, nullable=False)
+
+    # ✅ NEW (hostel support)
+    gender = Column(String(10), default="any")  # male / female / any
+    is_hostel = Column(Boolean, default=False)
+
     requires_approval = Column(Boolean, default=False)
     description = Column(Text, nullable=True)
+
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 
-    def __repr__(self):
-        return f"<Facility id={self.id} name={self.name} building_id={self.building_id}>"
+
 
 
 class Booking(Base):
     __tablename__ = "bookings"
 
     id = Column(Integer, primary_key=True, index=True)
+
     facility_id = Column(Integer, ForeignKey("facilities.id"), nullable=False)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+
     start_time = Column(DateTime(timezone=True), nullable=False, index=True)
     end_time = Column(DateTime(timezone=True), nullable=False, index=True)
+
     status = Column(Enum(BookingStatus), nullable=False, default=BookingStatus.PENDING)
-    recurring_group_id = Column(String(255), nullable=True)  # Groups recurring bookings
+
+    # ✅ NEW (important for hostel logic)
+    user_role = Column(Enum(UserRole), nullable=True)
+    room_number = Column(String(50), nullable=True)
+    bed_number = Column(String(50), nullable=True)
+
+    recurring_group_id = Column(String(255), nullable=True)
     notes = Column(Text, nullable=True)
+
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 
-    def __repr__(self):
-        return f"<Booking id={self.id} facility_id={self.facility_id} user_id={self.user_id} status={self.status}>"
+
 
 
 class BookingApproval(Base):
@@ -118,10 +149,38 @@ class BookingApproval(Base):
     id = Column(Integer, primary_key=True, index=True)
     booking_id = Column(Integer, ForeignKey("bookings.id"), nullable=False, unique=True)
     approver_id = Column(Integer, ForeignKey("users.id"), nullable=True)
+
     status = Column(Enum(ApprovalStatus), nullable=False, default=ApprovalStatus.PENDING)
-    reason = Column(Text, nullable=True)  # Approval or rejection reason
+    reason = Column(Text, nullable=True)
+
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 
-    def __repr__(self):
-        return f"<BookingApproval id={self.id} booking_id={self.booking_id} status={self.status}>"
+
+
+
+class Waitlist(Base):
+    __tablename__ = "waitlist"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"))
+    facility_id = Column(Integer, ForeignKey("facilities.id"))
+
+    start_time = Column(DateTime(timezone=True))
+    end_time = Column(DateTime(timezone=True))
+
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+
+
+
+class FailedBooking(Base):
+    __tablename__ = "failed_bookings"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"))
+    facility_id = Column(Integer, ForeignKey("facilities.id"))
+
+    reason = Column(Text)
+
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
