@@ -68,46 +68,33 @@ def check_booking_conflict(
     return has_conflict, conflicts
 
 
-def validate_booking_times(
-    start_time: datetime,
-    end_time: datetime,
-    cancellation_cutoff_hours: int = 24
-) -> tuple[bool, str]:
-    """
-    Validate booking times.
-    
-    Args:
-        start_time: Proposed start time
-        end_time: Proposed end time
-        cancellation_cutoff_hours: Hours to allow from now for cancellation
-    
-    Returns:
-        Tuple of (is_valid: bool, error_message: str)
-    """
-    
-    # Use timezone-aware UTC now (matches database timezone-aware datetimes)
+def to_utc(dt: datetime):
+    if dt.tzinfo is None:
+        return dt.replace(tzinfo=timezone.utc)
+    return dt.astimezone(timezone.utc)
+
+
+def validate_booking_times(start_time: datetime, end_time: datetime):
     now = datetime.now(timezone.utc)
-    
-    # Check end time is after start time
+
+    start_time = to_utc(start_time)
+    end_time = to_utc(end_time)
+
     if end_time <= start_time:
         return False, "End time must be after start time"
-    
-    # Check times are in the future
+
     if start_time <= now:
         return False, "Start time must be in the future"
-    
-    # Check booking duration (optional: max 8 hours per booking for classrooms)
+
     max_duration = timedelta(hours=8)
     if end_time - start_time > max_duration:
-        return False, f"Maximum booking duration is {max_duration.total_seconds() / 3600:.0f} hours"
-    
-    # Check minimum booking duration (at least 30 minutes)
+        return False, "Maximum booking duration is 8 hours"
+
     min_duration = timedelta(minutes=30)
     if end_time - start_time < min_duration:
         return False, "Minimum booking duration is 30 minutes"
-    
-    return True, ""
 
+    return True, ""
 
 def check_cancellation_allowed(
     booking: models.Booking,

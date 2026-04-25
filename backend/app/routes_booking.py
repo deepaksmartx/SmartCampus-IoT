@@ -2,7 +2,7 @@
 Booking Management Routes
 Handles facility bookings, availability checks, and conflict detection
 """
-
+from app.services.booking_audit import log_failed_booking
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 from datetime import datetime, timedelta
@@ -93,6 +93,14 @@ def list_all_bookings(
     bookings = query.order_by(models.Booking.start_time.desc()).all()
     return bookings
 
+# ✅ Put this FIRST
+@router.get("/failed")
+def get_failed_bookings(
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(verify_token),
+):
+    require_admin_or_manager(current_user)
+    return db.query(models.FailedBooking).order_by(models.FailedBooking.created_at.desc()).all()
 
 # ─────── GET: Single Booking ───────
 @router.get("/{booking_id}", response_model=schemas.BookingResponse)
@@ -137,11 +145,29 @@ def create_booking(
     # 1. Verify facility exists
     facility = db.query(models.Facility).filter(models.Facility.id == booking_data.facility_id).first()
     if not facility:
+        log_failed_booking(
+        db,
+        current_user.id,
+        booking_data.facility_id,
+        None,
+        "Facility not found",
+        booking_data.start_time,
+        booking_data.end_time
+    )
         raise HTTPException(status_code=404, detail="Facility not found")
 
     # 2. Validate booking times
     is_valid, error_msg = validate_booking_times(booking_data.start_time, booking_data.end_time)
     if not is_valid:
+        log_failed_booking(
+        db,
+        current_user.id,
+        booking_data.facility_id,
+        facility.name if facility else None,
+        error_msg,
+        booking_data.start_time,
+        booking_data.end_time
+    )
         raise HTTPException(status_code=400, detail=error_msg)
 
     # 3. Check for conflicts
@@ -152,6 +178,15 @@ def create_booking(
         db,
     )
     if has_conflict:
+        log_failed_booking(
+        db,
+        current_user.id,
+        booking_data.facility_id,
+        facility.name,
+        "Booking conflict detected",
+        booking_data.start_time,
+        booking_data.end_time
+    )
         raise HTTPException(
             status_code=409,
             detail={
@@ -400,3 +435,4 @@ def check_conflict(
             for c in conflicts
         ]
     )
+

@@ -125,3 +125,19 @@ class BookingApproval(Base):
 
     def __repr__(self):
         return f"<BookingApproval id={self.id} booking_id={self.booking_id} status={self.status}>"
+    
+class FailedBooking(Base):
+    __tablename__ = "failed_bookings"
+
+    id = Column(Integer, primary_key=True, index=True)
+
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=True)
+    facility_id = Column(Integer, ForeignKey("facilities.id"), nullable=True)
+
+    facility_name = Column(String(255), nullable=True)
+    reason = Column(Text, nullable=False)
+
+    start_time = Column(DateTime(timezone=True), nullable=True)
+    end_time = Column(DateTime(timezone=True), nullable=True)
+
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
