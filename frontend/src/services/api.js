@@ -257,7 +257,17 @@ export const facilityAPI = {
   },
 
   getFacilityTypes: async () => {
-    const response = await api.get("/api/facilities/config/types");
+    const response = await api.get("/api/facilities/config/facility-types");
+    return response.data;
+  },
+
+  getFacilityInventory: async (facilityId) => {
+    const response = await api.get(`/api/facilities/${facilityId}/inventory`);
+    return response.data;
+  },
+
+  createInventoryItem: async (payload) => {
+    const response = await api.post("/api/facilities/inventory", payload);
     return response.data;
   },
 };

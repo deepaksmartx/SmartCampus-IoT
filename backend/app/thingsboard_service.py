@@ -16,7 +16,7 @@ DEVICE_TOKENS = {
 }
 
 
-def send_dashboard_data(device_type, facility_type, facility_name):
+def send_dashboard_data(device_type, facility_type, facility_name, sensor_id):
     """
     Send telemetry data to ThingsBoard based on selected device type
     """
@@ -34,21 +34,24 @@ def send_dashboard_data(device_type, facility_type, facility_name):
         payload = {
             "occupancy": random.randint(1, 50),
             "facility_type": facility_type,
-            "facility_name": facility_name
+            "facility_name": facility_name,
+            "sensor_id": sensor_id
         }
 
     elif device_type == "water":
         payload = {
             "water_usage": random.randint(100, 1000),
             "facility_type": facility_type,
-            "facility_name": facility_name
+            "facility_name": facility_name,
+            "sensor_id": sensor_id
         }
 
     elif device_type == "energy":
         payload = {
             "energy_usage": round(random.uniform(1.0, 10.0), 2),
             "facility_type": facility_type,
-            "facility_name": facility_name
+            "facility_name": facility_name,
+            "sensor_id": sensor_id
         }
 
     try:

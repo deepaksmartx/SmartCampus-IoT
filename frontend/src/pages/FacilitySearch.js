@@ -4,6 +4,7 @@ import { facilityAPI } from "../services/api";
 import "../App.css";
 
 function FacilitySearch() {
+  const toEnumKey = (value) => value.toUpperCase().replace(/[\s-]+/g, "_");
   const navigate = useNavigate();
   const [facilities, setFacilities] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -17,22 +18,46 @@ function FacilitySearch() {
 
   // Building list for filter dropdown
   const [buildings, setBuildings] = useState([]);
-
-  const facilityTypes = [
-    "Classroom",
-    "Lab",
-    "Auditorium",
-    "Meeting Room",
-    "Sports Court",
-    "Library",
-    "Cafe",
-    "Hostel",
-    "Other",
-  ];
+  const [facilityTypeOptions, setFacilityTypeOptions] = useState([]);
+  const [subtypeOptions, setSubtypeOptions] = useState({});
+  const [formData, setFormData] = useState({
+    name: "",
+    type: "",
+    custom_type: "",
+    subtype: "",
+    capacity: 1,
+    building_id: "",
+    requires_approval: false,
+    sensor_id: "",
+    description: "",
+  });
+  const [showCreateForm, setShowCreateForm] = useState(false);
+  const rawRole = localStorage.getItem("role");
+  const storedUser = localStorage.getItem("user");
+  let derivedRole = rawRole;
+  if (!derivedRole && storedUser) {
+    try {
+      derivedRole = JSON.parse(storedUser)?.role || "";
+    } catch {
+      derivedRole = "";
+    }
+  }
+  const canManageFacilities = ["Admin", "Facility Manager", "ADMIN", "FACILITY_MANAGER"].includes(derivedRole);
 
   useEffect(() => {
     fetchFacilities();
+    loadFacilityConfig();
   }, []);
+
+  const loadFacilityConfig = async () => {
+    try {
+      const config = await facilityAPI.getFacilityTypes();
+      setFacilityTypeOptions(config.facility_types || []);
+      setSubtypeOptions(config.subtypes || {});
+    } catch (err) {
+      console.error("Unable to fetch facility config:", err);
+    }
+  };
 
   const fetchFacilities = async () => {
     try {
@@ -60,7 +85,7 @@ function FacilitySearch() {
     try {
       setLoading(true);
       const filters = {};
-      if (facilityType) filters.facility_type = facilityType;
+      if (facilityType) filters.facility_type = toEnumKey(facilityType);
       if (buildingId) filters.building_id = parseInt(buildingId);
       if (minCapacity) filters.min_capacity = parseInt(minCapacity);
 
@@ -91,6 +116,35 @@ function FacilitySearch() {
     navigate(`/booking/new`, { state: { facility } });
   };
 
+  const handleCreateFacility = async (e) => {
+    e.preventDefault();
+    try {
+      const payload = {
+        ...formData,
+        building_id: parseInt(formData.building_id),
+        capacity: parseInt(formData.capacity),
+      };
+      if (payload.type !== "Custom") payload.custom_type = null;
+      if (!payload.subtype) payload.subtype = null;
+      await facilityAPI.createFacility(payload);
+      setShowCreateForm(false);
+      setFormData({
+        name: "",
+        type: "",
+        custom_type: "",
+        subtype: "",
+        capacity: 1,
+        building_id: "",
+        requires_approval: false,
+        sensor_id: "",
+        description: "",
+      });
+      fetchFacilities();
+    } catch (err) {
+      setError(err.response?.data?.detail || err.message || "Facility creation failed");
+    }
+  };
+
   return (
     <div className="page-wrapper">
       <div style={{ maxWidth: "1200px", margin: "0 auto", padding: "20px" }}>
@@ -108,7 +162,45 @@ function FacilitySearch() {
           <p style={{ color: "rgba(255,255,255,0.6)", fontSize: "14px" }}>
             Search and book campus facilities
           </p>
+          {canManageFacilities && (
+            <button
+              style={{ marginTop: "12px", padding: "8px 12px", borderRadius: "6px", border: "none", cursor: "pointer" }}
+              onClick={() => setShowCreateForm((prev) => !prev)}
+            >
+              {showCreateForm ? "Close Facility Form" : "Add Facility"}
+            </button>
+          )}
         </div>
+
+        {canManageFacilities && showCreateForm && (
+          <form onSubmit={handleCreateFacility} style={{ marginBottom: "20px", padding: "16px", border: "1px solid rgba(255,255,255,0.1)", borderRadius: "10px" }}>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: "10px" }}>
+              <input placeholder="Facility name" value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} required />
+              <select value={formData.type} onChange={(e) => setFormData({ ...formData, type: e.target.value, subtype: "" })} required>
+                <option value="">Select Type</option>
+                {facilityTypeOptions.map((type) => <option key={type} value={type}>{type}</option>)}
+              </select>
+              <input placeholder="Subtype (optional)" value={formData.subtype} onChange={(e) => setFormData({ ...formData, subtype: e.target.value })} list="facility-subtypes" />
+              <datalist id="facility-subtypes">
+                {(subtypeOptions[formData.type] || []).map((sub) => <option key={sub} value={sub} />)}
+              </datalist>
+              {formData.type === "Custom" && (
+                <input placeholder="Custom facility type" value={formData.custom_type} onChange={(e) => setFormData({ ...formData, custom_type: e.target.value })} required />
+              )}
+              <input placeholder="Capacity" type="number" min="1" value={formData.capacity} onChange={(e) => setFormData({ ...formData, capacity: e.target.value })} required />
+              <input placeholder="Building ID" type="number" min="1" value={formData.building_id} onChange={(e) => setFormData({ ...formData, building_id: e.target.value })} required />
+              <input placeholder="Sensor ID (optional)" value={formData.sensor_id} onChange={(e) => setFormData({ ...formData, sensor_id: e.target.value })} />
+              <input placeholder="Description (optional)" value={formData.description} onChange={(e) => setFormData({ ...formData, description: e.target.value })} />
+              <label style={{ display: "flex", alignItems: "center", gap: "6px", color: "white", fontSize: "12px" }}>
+                <input type="checkbox" checked={formData.requires_approval} onChange={(e) => setFormData({ ...formData, requires_approval: e.target.checked })} />
+                Requires approval
+              </label>
+            </div>
+            <button type="submit" style={{ marginTop: "10px", padding: "8px 12px", borderRadius: "6px", border: "none", cursor: "pointer" }}>
+              Create Facility
+            </button>
+          </form>
+        )}
 
         {/* Search & Filter Bar */}
         <div
@@ -158,8 +250,8 @@ function FacilitySearch() {
                   }}
                 >
                   <option value="">All Types</option>
-                  {facilityTypes.map((type) => (
-                    <option key={type} value={type.toUpperCase()}>
+                  {facilityTypeOptions.map((type) => (
+                    <option key={type} value={type}>
                       {type}
                     </option>
                   ))}

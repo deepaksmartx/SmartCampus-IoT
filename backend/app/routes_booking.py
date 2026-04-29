@@ -34,6 +34,14 @@ def require_admin_or_manager(user):
         raise HTTPException(status_code=403, detail="Admin or Facility Manager required")
 
 
+def get_academic_period_window(period: str) -> tuple[datetime, datetime]:
+    now = datetime.utcnow()
+    year = now.year
+    if period == "Semester":
+        return datetime(year, 1, 1), datetime(year, 6, 30, 23, 59, 59)
+    return datetime(year, 1, 1), datetime(year, 4, 30, 23, 59, 59)
+
+
 # ─────── GET: List Bookings ───────
 @router.get("/", response_model=list[schemas.BookingResponse])
 def list_user_bookings(
@@ -89,6 +97,11 @@ def list_all_bookings(
 
     if user_id:
         query = query.filter(models.Booking.user_id == user_id)
+
+    if current_user.role == UserRole.FACILITY_MANAGER:
+        query = query.join(models.Facility, models.Facility.id == models.Booking.facility_id).filter(
+            models.Facility.manager_id == current_user.id
+        )
 
     bookings = query.order_by(models.Booking.start_time.desc()).all()
     return bookings
@@ -157,6 +170,7 @@ def create_booking(
         raise HTTPException(status_code=404, detail="Facility not found")
 
     # 2. Validate booking times
+
     is_valid, error_msg = validate_booking_times(booking_data.start_time, booking_data.end_time)
     if not is_valid:
         log_failed_booking(
@@ -170,11 +184,26 @@ def create_booking(
     )
         raise HTTPException(status_code=400, detail=error_msg)
 
+    use_academic_period = facility.type == models.FacilityType.HOSTEL or (
+        facility.subtype and facility.subtype.lower() == "guest room"
+    )
+    if use_academic_period:
+        if not booking_data.academic_period:
+            raise HTTPException(status_code=400, detail="academic_period is required for hostel and guest room booking")
+        derived_start, derived_end = get_academic_period_window(booking_data.academic_period.value)
+    else:
+        if not booking_data.start_time or not booking_data.end_time:
+            raise HTTPException(status_code=400, detail="start_time and end_time are required")
+        derived_start, derived_end = booking_data.start_time, booking_data.end_time
+        is_valid, error_msg = validate_booking_times(booking_data.start_time, booking_data.end_time)
+        if not is_valid:
+            raise HTTPException(status_code=400, detail=error_msg)
+
     # 3. Check for conflicts
     has_conflict, conflicts = check_booking_conflict(
         booking_data.facility_id,
-        booking_data.start_time,
-        booking_data.end_time,
+        derived_start,
+        derived_end,
         db,
     )
     if has_conflict:
@@ -205,6 +234,9 @@ def create_booking(
     # 5. Create booking(s)
     recurring_group_id = None
     bookings_created = []
+
+    if use_academic_period and booking_data.recurring_pattern:
+        raise HTTPException(status_code=400, detail="Recurring pattern is not supported for academic period bookings")
 
     if booking_data.recurring_pattern and booking_data.occurrence_count:
         # Generate recurring slots
@@ -239,6 +271,7 @@ def create_booking(
                 user_id=current_user.id,
                 start_time=slot_start,
                 end_time=slot_end,
+                academic_period=booking_data.academic_period,
                 status=booking_status,
                 recurring_group_id=recurring_group_id,
                 notes=booking_data.notes,
@@ -255,8 +288,9 @@ def create_booking(
         booking = models.Booking(
             facility_id=booking_data.facility_id,
             user_id=current_user.id,
-            start_time=booking_data.start_time,
-            end_time=booking_data.end_time,
+                start_time=derived_start,
+                end_time=derived_end,
+                academic_period=booking_data.academic_period,
             status=booking_status,
             notes=booking_data.notes,
         )

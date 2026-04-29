@@ -39,9 +39,9 @@ def get_pending_approvals(
 
     # Managers see only their assigned facilities
     if current_user.role == UserRole.FACILITY_MANAGER:
-        # Get all facilities in buildings managed by this manager
-        # For now, assume all facilities; TODO: add facility_manager_id to Facility model
-        pass
+        query = query.join(models.Facility, models.Facility.id == models.Booking.facility_id).filter(
+            models.Facility.manager_id == current_user.id
+        )
 
     if facility_id:
         query = query.filter(models.Booking.facility_id == facility_id)
@@ -62,7 +62,12 @@ def count_pending_approvals(
 
     count = db.query(models.Booking).filter(
         models.Booking.status == BookingStatus.PENDING
-    ).count()
+    )
+    if current_user.role == UserRole.FACILITY_MANAGER:
+        count = count.join(models.Facility, models.Facility.id == models.Booking.facility_id).filter(
+            models.Facility.manager_id == current_user.id
+        )
+    count = count.count()
 
     return {"pending_count": count}
 
