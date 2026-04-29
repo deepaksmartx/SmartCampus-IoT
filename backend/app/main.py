@@ -4,14 +4,14 @@ from app.routes import auth, facility, booking, iot, manager
 
 Base.metadata.create_all(bind=engine)
 
-Step 1: Create app
+#Step 1: Create app
 app = FastAPI()
 
-Step 2: Create tables
+#Step 2: Create tables
 Base.metadata.create_all(bind=engine)
 
 
-Step 3: Include routers
+#Step 3: Include routers
 app.include_router(auth.router)
 app.include_router(facility.router)
 app.include_router(booking.router)
