@@ -1,0 +1,40 @@
+services:
+  # Backend API
+  - type: web
+    name: smartcampus-backend
+    runtime: python
+    buildCommand: cd backend && pip install -r requirements.txt
+    startCommand: cd backend && uvicorn main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: DATABASE_URL
+        sync: false
+      - key: SECRET_KEY
+        generateValue: true
+      - key: IOT_INGEST_API_KEY
+        generateValue: true
+      - key: DEBUG
+        value: False
+      - key: IOT_THRESHOLD_ENERGY
+        value: 800
+      - key: IOT_THRESHOLD_WATER
+        value: 200
+      - key: IOT_THRESHOLD_TEMP
+        value: 40
+      - key: IOT_THRESHOLD_TEMP_LOW
+        value: -5
+      - key: OCCUPANCY_TOKEN
+        sync: false
+      - key: WATER_TOKEN
+        sync: false
+      - key: ENERGY_TOKEN
+        sync: false
+
+  # Frontend Static Site
+  - type: web
+    name: smartcampus-frontend
+    runtime: static
+    buildCommand: cd frontend && npm install && npm run build
+    staticPublishPath: frontend/build
+    envVars:
+      - key: REACT_APP_API_URL
+        sync: false
