@@ -282,4 +282,5 @@ export const floorAPI = {
   },
 };
 
+export const approvalAPI = {};
 export default api;
