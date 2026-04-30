@@ -1,16 +1,20 @@
-from fastapi import FastAPI
-from app.database import Base, engine
+from fastapi import APIRouter
+
 import app.routes as routes
+import app.routes_approval as routes_approval
+import app.routes_booking as routes_booking
+import app.routes_building as routes_building
+import app.routes_facility as routes_facility
+import app.routes_floor as routes_floor
 
-Base.metadata.create_all(bind=engine)
+# create central router
+router = APIRouter()
 
-#Step 1: Create app
-app = FastAPI()
-
-#Step 2: Create tables
-Base.metadata.create_all(bind=engine)
-
-
-#Step 3: Include routers
-app.include_router(routes.router)
-
+# include all routers
+router.include_router(routes.router)
+router.include_router(routes_approval.router)
+router.include_router(routes_booking.router)
+router.include_router(routes_building.router)
+router.include_router(routes_facility.router)
+router.include_router(routes_facility.facilities_router)
+router.include_router(routes_floor.router)
