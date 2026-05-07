@@ -12,7 +12,11 @@ if not DATABASE_URL:
     DATABASE_URL = f"sqlite:///{local_db.as_posix()}"
     print(f"INFO: DATABASE_URL not set. Falling back to {DATABASE_URL}")
 
-engine = create_engine(DATABASE_URL)
+connect_args = {}
+if DATABASE_URL.startswith("sqlite"):
+    connect_args = {"check_same_thread": False}
+
+engine = create_engine(DATABASE_URL, connect_args=connect_args)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
 
