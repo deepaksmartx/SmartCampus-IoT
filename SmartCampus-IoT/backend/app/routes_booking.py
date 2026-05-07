@@ -75,7 +75,7 @@ def create_booking(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(verify_token),
 ):
-    Check facility
+    # Check facility
     facility = db.query(models.Facility).filter(
         models.Facility.id == booking_data.facility_id
     ).first()
@@ -83,7 +83,7 @@ def create_booking(
     if not facility:
         raise HTTPException(status_code=404, detail="Facility not found")
 
-   HOSTEL BOOKING LOGIC
+    # HOSTEL BOOKING LOGIC
     if facility.type == models.FacilityType.HOSTEL:
         result = process_hostel_booking(
             user_id=current_user.id,
@@ -102,9 +102,7 @@ def create_booking(
 
         return booking
 
-    
-
-    Validate time
+    # Validate time
     is_valid, error_msg = validate_booking_times(
         booking_data.start_time,
         booking_data.end_time
@@ -112,7 +110,7 @@ def create_booking(
     if not is_valid:
         raise HTTPException(status_code=400, detail=error_msg)
 
-    Conflict check
+    # Conflict check
     has_conflict, conflicts = check_booking_conflict(
         facility.id,
         booking_data.start_time,
@@ -126,7 +124,7 @@ def create_booking(
             detail={"error": "Conflict detected", "conflicts": conflicts}
         )
 
-    Status decide
+    # Status decide
     booking_status = (
         BookingStatus.PENDING
         if facility.requires_approval
@@ -146,7 +144,7 @@ def create_booking(
     db.commit()
     db.refresh(booking)
 
-    Approval record
+    # Approval record
     if facility.requires_approval:
         approval = models.BookingApproval(
             booking_id=booking.id,
@@ -176,7 +174,7 @@ def update_booking(
     if booking.user_id != current_user.id:
         raise HTTPException(status_code=403, detail="Not authorized")
 
-    Check cancellation window
+    # Check cancellation window
     can_cancel, msg = check_cancellation_allowed(booking)
     if not can_cancel:
         raise HTTPException(status_code=400, detail=msg)
@@ -184,12 +182,12 @@ def update_booking(
     new_start = booking_data.start_time or booking.start_time
     new_end = booking_data.end_time or booking.end_time
 
-     Validate
+    # Validate
     is_valid, error_msg = validate_booking_times(new_start, new_end)
     if not is_valid:
         raise HTTPException(status_code=400, detail=error_msg)
 
-     Conflict check
+    # Conflict check
     has_conflict, conflicts = check_booking_conflict(
         booking.facility_id,
         new_start,

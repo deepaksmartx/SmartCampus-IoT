@@ -34,6 +34,65 @@ def validate_booking_times(start_time: datetime, end_time: datetime):
 
 
 
+def check_cancellation_allowed(booking, cancellation_cutoff_hours: int = 24):
+    now = datetime.now(timezone.utc)
+    time_until_start = booking.start_time - now
+    cutoff_delta = timedelta(hours=cancellation_cutoff_hours)
+
+    if time_until_start < cutoff_delta:
+        hours_left = time_until_start.total_seconds() / 3600
+        return False, f"Cannot cancel within {cancellation_cutoff_hours} hours of start. {hours_left:.1f} hours remaining."
+
+    return True, ""
+
+
+
+
+def calculate_recurring_slots(
+    start_date: datetime,
+    end_date: datetime,
+    pattern: str,
+    session_start_time: str,
+    session_end_time: str,
+    occurrence_count: int = None,
+) -> list[tuple[datetime, datetime]]:
+    slots = []
+    current_date = start_date.replace(hour=0, minute=0, second=0, microsecond=0)
+
+    start_hour, start_minute = map(int, session_start_time.split(":"))
+    end_hour, end_minute = map(int, session_end_time.split(":"))
+
+    occurrence = 0
+    while True:
+        if occurrence_count and occurrence >= occurrence_count:
+            break
+        if not occurrence_count and current_date.date() > end_date.date():
+            break
+
+        slot_start = current_date.replace(hour=start_hour, minute=start_minute)
+        slot_end = current_date.replace(hour=end_hour, minute=end_minute)
+        slots.append((slot_start, slot_end))
+        occurrence += 1
+
+        if pattern == "daily":
+            current_date += timedelta(days=1)
+        elif pattern == "weekly":
+            current_date += timedelta(weeks=1)
+        elif pattern == "biweekly":
+            current_date += timedelta(weeks=2)
+        elif pattern == "monthly":
+            if current_date.month == 12:
+                current_date = current_date.replace(year=current_date.year + 1, month=1)
+            else:
+                current_date = current_date.replace(month=current_date.month + 1)
+        else:
+            break
+
+    return slots
+
+
+
+
 def check_booking_conflict(facility_id, start_time, end_time, db: Session):
     conflicts = db.query(models.Booking).filter(
         models.Booking.facility_id == facility_id,
@@ -48,28 +107,28 @@ def check_booking_conflict(facility_id, start_time, end_time, db: Session):
 
 def process_hostel_booking(user, facility, start_time, end_time, db: Session):
 
-    1️⃣ Validate time
+    # Validate time
     valid, msg = validate_booking_times(start_time, end_time)
     if not valid:
         log_failed_booking(user.id, facility.id, msg, db)
         return {"status": "failed", "reason": msg}
 
-    2️⃣ Gender restriction
+    # Gender restriction
     if facility.gender != "any" and user.gender != facility.gender:
         reason = "Gender not allowed for this hostel"
         log_failed_booking(user.id, facility.id, reason, db)
         return {"status": "failed", "reason": reason}
 
-    3️⃣ Check conflict
+    # Check conflict
     has_conflict, _ = check_booking_conflict(facility.id, start_time, end_time, db)
 
-    # 4️⃣ Count active bookings
+    # Count active bookings
     active_count = db.query(models.Booking).filter(
         models.Booking.facility_id == facility.id,
         models.Booking.status == models.BookingStatus.CONFIRMED
     ).count()
 
-    5️⃣ Capacity check
+    # Capacity check
     if active_count >= facility.capacity or has_conflict:
 
         # Priority: Student > Staff
@@ -91,7 +150,7 @@ def process_hostel_booking(user, facility, start_time, end_time, db: Session):
         else:
             return add_to_waitlist(user, facility, start_time, end_time, db)
 
-    6️⃣ Create booking
+    # Create booking
     booking = models.Booking(
         facility_id=facility.id,
         user_id=user.id,
